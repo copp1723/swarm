@@ -13,10 +13,7 @@ services:
           name: swarm-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          name: swarm-redis
-          type: pserv
-          property: connectionString
+        value: redis://swarm-redis:6379
       - key: SECRET_KEY
         generateValue: true
       - key: OPENROUTER_API_KEY
@@ -43,10 +40,7 @@ services:
           name: swarm-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          name: swarm-redis
-          type: pserv
-          property: connectionString
+        value: redis://swarm-redis:6379
 
   # Redis Cache
   - type: pserv
@@ -61,5 +55,5 @@ services:
 
 databases:
   - name: swarm-db
-    plan: starter  # Upgrade for production
+    plan: free  # Free tier for development, upgrade to standard for production
     postgresMajorVersion: 15
