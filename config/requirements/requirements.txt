@@ -43,6 +43,13 @@ colorama==0.4.6  # Colored terminal output
 python-dateutil==2.8.2
 pytz==2023.3
 pydantic==2.5.2
+psutil==5.9.8 # For system monitoring
+icalendar==5.0.12 # For calendar parsing
+beautifulsoup4==4.12.3 # For HTML parsing
+lxml==5.2.2 # For HTML parsing
+validators==0.28.1 # For input validation
+supervision==0.19.0 # Custom dependency
+docker==7.1.0 # For Docker interaction
 
 # Configuration & Validation
 jsonschema==4.20.0  # For config validation
