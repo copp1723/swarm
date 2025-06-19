@@ -1,0 +1,267 @@
+{
+  "version": "2.0",
+  "templates": [
+    {
+      "id": "code_review_detailed",
+      "name": "Detailed Code Review Chain",
+      "description": "Step-by-step code review with specific tasks per agent",
+      "steps": [
+        {
+          "agent": "product_01",
+          "task": "Review requirements alignment and user story coverage",
+          "output_format": "markdown",
+          "dependencies": [],
+          "timeout_minutes": 5
+        },
+        {
+          "agent": "coder_01",
+          "task": "Analyze code quality, architecture, and implementation details",
+          "output_format": "markdown",
+          "dependencies": ["product_01"],
+          "timeout_minutes": 10
+        },
+        {
+          "agent": "tester_01",
+          "task": "Evaluate test coverage, identify missing test cases, and verify edge cases",
+          "output_format": "markdown", 
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 8
+        },
+        {
+          "agent": "bug_01",
+          "task": "Identify potential runtime issues, error handling gaps, and reliability concerns",
+          "output_format": "markdown",
+          "dependencies": ["coder_01", "tester_01"],
+          "timeout_minutes": 8
+        }
+      ],
+      "summary_agent": "general_01",
+      "allow_reordering": true
+    },
+    {
+      "id": "feature_development",
+      "name": "Feature Development Pipeline",
+      "description": "End-to-end feature development with clear handoffs",
+      "steps": [
+        {
+          "agent": "product_01",
+          "task": "Create user stories with acceptance criteria for the feature",
+          "output_format": "user_stories",
+          "dependencies": [],
+          "timeout_minutes": 10
+        },
+        {
+          "agent": "coder_01", 
+          "task": "Implement the feature based on user stories, create unit tests",
+          "output_format": "code_diff",
+          "dependencies": ["product_01"],
+          "timeout_minutes": 20
+        },
+        {
+          "agent": "tester_01",
+          "task": "Write integration tests and perform functional testing",
+          "output_format": "test_report",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 15
+        },
+        {
+          "agent": "bug_01",
+          "task": "Set up monitoring, error tracking, and create runbook",
+          "output_format": "markdown",
+          "dependencies": ["coder_01", "tester_01"],
+          "timeout_minutes": 10
+        },
+        {
+          "agent": "devops_01",
+          "task": "Deploy to staging, run smoke tests, prepare production deployment",
+          "output_format": "deployment_log",
+          "dependencies": ["tester_01", "bug_01"],
+          "timeout_minutes": 15
+        }
+      ],
+      "summary_agent": "general_01",
+      "allow_reordering": false
+    },
+    {
+      "id": "incident_investigation",
+      "name": "Production Incident Response",
+      "description": "Systematic incident investigation and resolution",
+      "steps": [
+        {
+          "agent": "bug_01",
+          "task": "Analyze error logs, metrics, and create initial incident timeline",
+          "output_format": "incident_report",
+          "dependencies": [],
+          "timeout_minutes": 15,
+          "priority": "critical"
+        },
+        {
+          "agent": "coder_01",
+          "task": "Identify root cause in code, propose immediate fix",
+          "output_format": "code_diff",
+          "dependencies": ["bug_01"],
+          "timeout_minutes": 20,
+          "priority": "critical"
+        },
+        {
+          "agent": "tester_01",
+          "task": "Create regression tests to prevent recurrence",
+          "output_format": "test_suite",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 15,
+          "priority": "high"
+        },
+        {
+          "agent": "devops_01",
+          "task": "Deploy hotfix, monitor system health, rollback if needed",
+          "output_format": "deployment_log",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 10,
+          "priority": "critical"
+        },
+        {
+          "agent": "bug_01",
+          "task": "Create final RCA document with lessons learned",
+          "output_format": "rca_document",
+          "dependencies": ["coder_01", "tester_01", "devops_01"],
+          "timeout_minutes": 20,
+          "priority": "medium"
+        }
+      ],
+      "summary_agent": "general_01",
+      "allow_reordering": false,
+      "parallel_groups": [
+        ["bug_01"],
+        ["coder_01"],
+        ["tester_01", "devops_01"],
+        ["bug_01"]
+      ]
+    },
+    {
+      "id": "refactoring_chain",
+      "name": "Code Refactoring Pipeline",
+      "description": "Systematic refactoring with quality gates",
+      "steps": [
+        {
+          "agent": "coder_01",
+          "task": "Identify code smells, create refactoring plan with priority matrix",
+          "output_format": "refactoring_plan",
+          "dependencies": [],
+          "timeout_minutes": 15
+        },
+        {
+          "agent": "tester_01",
+          "task": "Create comprehensive test suite before refactoring begins",
+          "output_format": "test_suite",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 20
+        },
+        {
+          "agent": "coder_01",
+          "task": "Execute refactoring following the plan, maintain test coverage",
+          "output_format": "code_diff",
+          "dependencies": ["tester_01"],
+          "timeout_minutes": 30
+        },
+        {
+          "agent": "bug_01",
+          "task": "Performance testing and reliability analysis of refactored code",
+          "output_format": "performance_report",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 15
+        }
+      ],
+      "summary_agent": "general_01",
+      "quality_gates": {
+        "test_coverage_min": 80,
+        "performance_regression_max": 5
+      }
+    },
+    {
+      "id": "api_design",
+      "name": "API Design and Implementation",
+      "description": "Design-first API development workflow",
+      "steps": [
+        {
+          "agent": "product_01",
+          "task": "Define API requirements, use cases, and consumer needs",
+          "output_format": "requirements_doc",
+          "dependencies": [],
+          "timeout_minutes": 15
+        },
+        {
+          "agent": "coder_01",
+          "task": "Design API schema, endpoints, and create OpenAPI specification",
+          "output_format": "openapi_spec",
+          "dependencies": ["product_01"],
+          "timeout_minutes": 20
+        },
+        {
+          "agent": "tester_01",
+          "task": "Create API test scenarios and contract tests",
+          "output_format": "test_scenarios",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 15
+        },
+        {
+          "agent": "coder_01",
+          "task": "Implement API endpoints with validation and error handling",
+          "output_format": "code_implementation",
+          "dependencies": ["tester_01"],
+          "timeout_minutes": 30
+        },
+        {
+          "agent": "bug_01",
+          "task": "Set up API monitoring, rate limiting, and error tracking",
+          "output_format": "monitoring_config",
+          "dependencies": ["coder_01"],
+          "timeout_minutes": 15
+        }
+      ],
+      "summary_agent": "general_01",
+      "artifacts": ["openapi_spec", "postman_collection", "api_docs"]
+    }
+  ],
+  "output_formats": {
+    "markdown": {
+      "extension": ".md",
+      "mime_type": "text/markdown"
+    },
+    "code_diff": {
+      "extension": ".diff",
+      "mime_type": "text/x-diff"
+    },
+    "user_stories": {
+      "extension": ".stories.md",
+      "mime_type": "text/markdown",
+      "template": "## User Story\nAs a [user type]\nI want [feature]\nSo that [benefit]\n\n### Acceptance Criteria\n- [ ] Criterion 1\n- [ ] Criterion 2"
+    },
+    "test_report": {
+      "extension": ".test-report.md",
+      "mime_type": "text/markdown"
+    },
+    "incident_report": {
+      "extension": ".incident.md",
+      "mime_type": "text/markdown"
+    },
+    "rca_document": {
+      "extension": ".rca.md",
+      "mime_type": "text/markdown",
+      "template": "# Root Cause Analysis\n\n## Incident Summary\n\n## Timeline\n\n## Root Cause\n\n## Resolution\n\n## Lessons Learned\n\n## Action Items"
+    }
+  },
+  "execution_modes": {
+    "sequential": {
+      "description": "Execute steps one after another",
+      "parallelism": 1
+    },
+    "parallel": {
+      "description": "Execute independent steps simultaneously",
+      "parallelism": -1
+    },
+    "staged": {
+      "description": "Execute in dependency-based stages",
+      "parallelism": 0
+    }
+  }
+}

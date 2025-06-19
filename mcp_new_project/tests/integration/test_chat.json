@@ -1,0 +1,4 @@
+{
+  "message": "Hello! Are you working?",
+  "model": "openai/gpt-4"
+}

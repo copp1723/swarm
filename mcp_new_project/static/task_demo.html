@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Executive - Task Management Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .task-controls { display: flex; gap: 10px; margin: 10px 0; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .progress-bar { width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: #28a745; transition: width 0.3s ease; }
+        .task-item { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .task-status { font-weight: bold; }
+        .task-status.running { color: #007bff; }
+        .task-status.success { color: #28a745; }
+        .task-status.failed { color: #dc3545; }
+        .log { background: #333; color: #0f0; padding: 10px; border-radius: 4px; height: 200px; overflow-y: auto; font-family: monospace; }
+        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .status-indicator.connected { background: #28a745; }
+        .status-indicator.disconnected { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 MCP Executive - Task Management Demo</h1>
+        
+        <div class="section">
+            <h2>🔌 WebSocket Connection</h2>
+            <p>Status: <span class="status-indicator" id="connectionStatus"></span><span id="connectionText">Disconnected</span></p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Quick Task Launchers</h2>
+            <div class="task-controls">
+                <button onclick="startUsageReport()">📊 Generate Usage Report</button>
+                <button onclick="startModelAnalysis()">🧠 Analyze Models</button>
+                <button onclick="startConversationAnalysis()">💬 Analyze Conversation</button>
+                <button onclick="startBatchProcessing()">📁 Batch Processing</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Active Tasks</h2>
+            <div id="activeTasks">No active tasks</div>
+        </div>
+
+        <div class="section">
+            <h2>📈 Task Progress</h2>
+            <div id="taskProgress" style="display: none;">
+                <div class="task-item">
+                    <strong>Task:</strong> <span id="currentTaskName">None</span><br>
+                    <strong>Status:</strong> <span id="currentTaskStatus" class="task-status">Idle</span><br>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar" style="width: 0%;"></div>
+                    </div>
+                    <div>Progress: <span id="progressText">0%</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📝 System Log</h2>
+            <div id="systemLog" class="log"></div>
+            <button onclick="clearLog()" style="margin-top: 10px;">Clear Log</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        // WebSocket connection
+        const socket = io();
+        let currentTaskId = null;
+
+        // Connection status
+        const statusIndicator = document.getElementById('connectionStatus');
+        const statusText = document.getElementById('connectionText');
+        const systemLog = document.getElementById('systemLog');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#74c0fc';
+            systemLog.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            systemLog.scrollTop = systemLog.scrollHeight;
+        }
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            statusIndicator.className = 'status-indicator connected';
+            statusText.textContent = 'Connected';
+            log('✅ Connected to MCP Executive Interface', 'success');
+        });
+
+        socket.on('disconnect', function() {
+            statusIndicator.className = 'status-indicator disconnected';
+            statusText.textContent = 'Disconnected';
+            log('❌ Disconnected from server', 'error');
+        });
+
+        socket.on('task_progress', function(data) {
+            log(`📈 Task ${data.task_id}: ${data.status} (${data.progress}%)`);
+            updateTaskProgress(data);
+        });
+
+        socket.on('task_complete', function(data) {
+            log(`✅ Task ${data.task_id} completed successfully`, 'success');
+            hideTaskProgress();
+        });
+
+        socket.on('task_error', function(data) {
+            log(`❌ Task ${data.task_id} failed: ${data.error.error || 'Unknown error'}`, 'error');
+            hideTaskProgress();
+        });
+
+        socket.on('system_notification', function(data) {
+            log(`🔔 System: ${data.type} - ${JSON.stringify(data.data)}`);
+        });
+
+        // Task management functions
+        function startTask(endpoint, data = {}) {
+            fetch(`/api/tasks/start/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentTaskId = data.task_id;
+                    log(`🚀 Started task: ${data.task_id}`, 'success');
+                    showTaskProgress(data.task_id, endpoint);
+                    socket.emit('join_task_room', { task_id: data.task_id });
+                } else {
+                    log(`❌ Failed to start task: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                log(`❌ Error: ${error.message}`, 'error');
+            });
+        }
+
+        function startUsageReport() {
+            startTask('usage-report', { days: 30, include_detailed_metrics: true });
+        }
+
+        function startModelAnalysis() {
+            startTask('model-analysis', { 
+                models: ['openai/gpt-4', 'openai/gpt-3.5-turbo', 'anthropic/claude-3'], 
+                timeframe: 7 
+            });
+        }
+
+        function startConversationAnalysis() {
+            startTask('conversation-analysis', { 
+                conversation_id: 1, 
+                analysis_type: 'full' 
+            });
+        }
+
+        function startBatchProcessing() {
+            startTask('batch-processing', { 
+                file_paths: ['/demo/file1.txt', '/demo/file2.txt'], 
+                processing_type: 'analyze' 
+            });
+        }
+
+        function showTaskProgress(taskId, taskName) {
+            document.getElementById('taskProgress').style.display = 'block';
+            document.getElementById('currentTaskName').textContent = taskName;
+            document.getElementById('currentTaskStatus').textContent = 'Starting...';
+            document.getElementById('currentTaskStatus').className = 'task-status running';
+            updateProgressBar(0);
+        }
+
+        function hideTaskProgress() {
+            document.getElementById('taskProgress').style.display = 'none';
+            currentTaskId = null;
+        }
+
+        function updateTaskProgress(data) {
+            if (data.task_id === currentTaskId) {
+                document.getElementById('currentTaskStatus').textContent = data.status;
+                updateProgressBar(data.progress || 0);
+            }
+        }
+
+        function updateProgressBar(progress) {
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+        }
+
+        function clearLog() {
+            systemLog.innerHTML = '';
+        }
+
+        // Load active tasks on page load
+        function loadActiveTasks() {
+            fetch('/api/tasks/list')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('activeTasks');
+                    if (data.active_tasks && data.active_tasks.length > 0) {
+                        container.innerHTML = data.active_tasks.map(task => 
+                            `<div class="task-item">
+                                <strong>${task.name}</strong> (${task.task_id})<br>
+                                Worker: ${task.worker}
+                            </div>`
+                        ).join('');
+                    } else {
+                        container.innerHTML = 'No active tasks';
+                    }
+                })
+                .catch(error => log(`Error loading tasks: ${error.message}`, 'error'));
+        }
+
+        // Initialize
+        loadActiveTasks();
+        setInterval(loadActiveTasks, 5000); // Refresh every 5 seconds
+    </script>
+</body>
+</html>

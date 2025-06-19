@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Templates - MCP Agent System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* Workflow stage visualization */
+        .workflow-stage {
+            position: relative;
+            padding-left: 2rem;
+        }
+        
+        .workflow-stage::before {
+            content: '';
+            position: absolute;
+            left: 0.75rem;
+            top: 1.5rem;
+            bottom: -1rem;
+            width: 2px;
+            background: #e5e7eb;
+        }
+        
+        .workflow-stage:last-child::before {
+            display: none;
+        }
+        
+        .stage-indicator {
+            position: absolute;
+            left: 0;
+            top: 1rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #3b82f6;
+            z-index: 1;
+        }
+        
+        .stage-indicator.completed {
+            background: #3b82f6;
+        }
+        
+        .stage-indicator.running {
+            background: #fbbf24;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Drag and drop styling */
+        .draggable {
+            cursor: move;
+        }
+        
+        .dragging {
+            opacity: 0.5;
+        }
+        
+        .drag-over {
+            background: #dbeafe;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-500 hover:text-gray-700">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </a>
+                    <h1 class="text-2xl font-bold text-gray-900">Workflow Templates</h1>
+                </div>
+                <button onclick="createCustomWorkflow()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                    <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                    Create Custom Workflow
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Template Selection -->
+        <div class="mb-8">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Available Templates</h2>
+            <div id="template-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Templates will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Workflow Execution Panel -->
+        <div id="execution-panel" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-6">Execute Workflow</h2>
+                
+                <!-- Workflow Details -->
+                <div id="workflow-details" class="mb-6">
+                    <!-- Details will be populated here -->
+                </div>
+                
+                <!-- Execution Options -->
+                <div class="mb-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Working Directory</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="working-directory" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="/Users/copp1723/Desktop">
+                            <button onclick="selectWorkingDirectory()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-300">
+                                <i data-lucide="folder" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Execution Mode</label>
+                        <select id="execution-mode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="staged">Staged (Dependency-based)</option>
+                            <option value="sequential">Sequential (One by one)</option>
+                            <option value="parallel">Parallel (All at once)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Additional Context (Optional)</label>
+                        <textarea id="additional-context" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Any additional context or requirements..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Execute Button -->
+                <div class="flex items-center justify-between">
+                    <button onclick="cancelExecution()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="executeWorkflow()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                        <i data-lucide="play" class="w-4 h-4 mr-2"></i>
+                        Execute Workflow
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Execution Progress -->
+        <div id="execution-progress" class="hidden mt-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-900">Execution Progress</h2>
+                    <span id="execution-status" class="px-3 py-1 text-sm font-medium rounded-full"></span>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-gray-600">Overall Progress</span>
+                        <span id="progress-percentage" class="font-medium">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Stage Visualization -->
+                <div id="stage-visualization" class="space-y-4">
+                    <!-- Stages will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div id="results-panel" class="hidden mt-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-6">Workflow Results</h2>
+                <div id="workflow-results">
+                    <!-- Results will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentTemplate = null;
+        let currentExecution = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTemplates();
+            lucide.createIcons();
+        });
+        
+        async function loadTemplates() {
+            try {
+                const response = await fetch('/api/workflows/templates');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const grid = document.getElementById('template-grid');
+                    grid.innerHTML = '';
+                    
+                    data.templates.forEach(template => {
+                        const card = createTemplateCard(template);
+                        grid.appendChild(card);
+                    });
+                    
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                showNotification('Failed to load workflow templates', 'error');
+            }
+        }
+        
+        function createTemplateCard(template) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer';
+            card.onclick = () => selectTemplate(template.id);
+            
+            const iconMap = {
+                'code_review': 'git-pull-request',
+                'deployment_setup': 'server',
+                'full_stack_development': 'layers',
+                'incident_response': 'alert-circle',
+                'bug_fix': 'bug',
+                'product_planning': 'layout',
+                'documentation': 'file-text'
+            };
+            
+            const icon = iconMap[template.id] || 'workflow';
+            
+            card.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="${icon}" class="w-5 h-5 text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900">${template.name}</h3>
+                        <p class="text-sm text-gray-600 mt-1">${template.description}</p>
+                        <div class="flex items-center space-x-4 mt-3 text-xs text-gray-500">
+                            <span class="flex items-center">
+                                <i data-lucide="layers" class="w-3 h-3 mr-1"></i>
+                                ${template.steps} steps
+                            </span>
+                            <span class="flex items-center">
+                                <i data-lucide="users" class="w-3 h-3 mr-1"></i>
+                                ${template.agents.length} agents
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        async function selectTemplate(templateId) {
+            try {
+                const response = await fetch(`/api/workflows/templates/${templateId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentTemplate = data.template;
+                    showExecutionPanel();
+                }
+            } catch (error) {
+                console.error('Error loading template details:', error);
+                showNotification('Failed to load template details', 'error');
+            }
+        }
+        
+        function showExecutionPanel() {
+            document.getElementById('execution-panel').classList.remove('hidden');
+            
+            const details = document.getElementById('workflow-details');
+            details.innerHTML = `
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">${currentTemplate.name}</h3>
+                <p class="text-gray-600 mb-4">${currentTemplate.description}</p>
+                
+                <div class="space-y-3">
+                    <h4 class="font-medium text-gray-700">Workflow Steps:</h4>
+                    ${currentTemplate.steps.map((step, index) => `
+                        <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium text-blue-600">
+                                ${index + 1}
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900">${step.agent}</div>
+                                <div class="text-sm text-gray-600 mt-1">${step.task}</div>
+                                ${step.dependencies.length > 0 ? `
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Depends on: ${step.dependencies.join(', ')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            // Scroll to execution panel
+            document.getElementById('execution-panel').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function cancelExecution() {
+            document.getElementById('execution-panel').classList.add('hidden');
+            currentTemplate = null;
+        }
+        
+        async function executeWorkflow() {
+            const workingDirectory = document.getElementById('working-directory').value.trim();
+            const executionMode = document.getElementById('execution-mode').value;
+            const context = document.getElementById('additional-context').value.trim();
+            
+            if (!workingDirectory) {
+                showNotification('Please specify a working directory', 'error');
+                return;
+            }
+            
+            // Show progress panel
+            document.getElementById('execution-progress').classList.remove('hidden');
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            updateExecutionStatus('running');
+            
+            try {
+                const response = await fetch('/api/workflows/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        template_id: currentTemplate.id,
+                        working_directory: workingDirectory,
+                        execution_mode: executionMode,
+                        context: context ? { additional_info: context } : {}
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentExecution = data.execution_id;
+                    showNotification('Workflow execution started', 'success');
+                    
+                    // Start polling for updates
+                    pollExecutionStatus();
+                } else {
+                    showNotification(data.error || 'Failed to start workflow', 'error');
+                    updateExecutionStatus('error');
+                }
+            } catch (error) {
+                console.error('Error executing workflow:', error);
+                showNotification('Failed to execute workflow', 'error');
+                updateExecutionStatus('error');
+            }
+        }
+        
+        async function pollExecutionStatus() {
+            if (!currentExecution) return;
+            
+            try {
+                const response = await fetch(`/api/workflows/executions/${currentExecution}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateExecutionVisualization(data.execution, data.visualization);
+                    
+                    // Continue polling if not complete
+                    if (data.execution.status === 'running' || data.execution.status === 'pending') {
+                        setTimeout(pollExecutionStatus, 2000);
+                    } else {
+                        // Show results
+                        showResults(data.execution);
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling execution status:', error);
+            }
+        }
+        
+        function updateExecutionVisualization(execution, visualization) {
+            // Update progress
+            const progress = calculateProgress(execution.steps);
+            document.getElementById('progress-percentage').textContent = `${progress}%`;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+            
+            // Update status
+            updateExecutionStatus(execution.status);
+            
+            // Update stage visualization
+            const container = document.getElementById('stage-visualization');
+            container.innerHTML = '';
+            
+            visualization.stages.forEach((stage, stageIndex) => {
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'workflow-stage';
+                
+                const stageSteps = stage.steps.map(step => `
+                    <div class="ml-8 p-3 bg-gray-50 rounded-lg ${step.status === 'running' ? 'ring-2 ring-blue-500' : ''}">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="font-medium text-gray-900">${step.agent}</span>
+                                <span class="ml-2 text-xs px-2 py-0.5 rounded-full ${getStatusClass(step.status)}">
+                                    ${step.status}
+                                </span>
+                            </div>
+                            ${step.started_at ? `
+                                <span class="text-xs text-gray-500">${formatTime(step.started_at)}</span>
+                            ` : ''}
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1">${step.task}</p>
+                    </div>
+                `).join('');
+                
+                const allCompleted = stage.steps.every(s => s.status === 'completed');
+                const anyRunning = stage.steps.some(s => s.status === 'running');
+                
+                stageDiv.innerHTML = `
+                    <div class="stage-indicator ${allCompleted ? 'completed' : anyRunning ? 'running' : ''}"></div>
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">Stage ${stageIndex + 1}</h4>
+                        ${stageSteps}
+                    </div>
+                `;
+                
+                container.appendChild(stageDiv);
+            });
+        }
+        
+        function calculateProgress(steps) {
+            const completed = steps.filter(s => s.status === 'completed').length;
+            return Math.round((completed / steps.length) * 100);
+        }
+        
+        function getStatusClass(status) {
+            const classes = {
+                'pending': 'bg-gray-100 text-gray-700',
+                'running': 'bg-blue-100 text-blue-700',
+                'completed': 'bg-green-100 text-green-700',
+                'failed': 'bg-red-100 text-red-700'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-700';
+        }
+        
+        function updateExecutionStatus(status) {
+            const element = document.getElementById('execution-status');
+            element.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            element.className = `px-3 py-1 text-sm font-medium rounded-full ${getStatusClass(status)}`;
+        }
+        
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString();
+        }
+        
+        function showResults(execution) {
+            document.getElementById('results-panel').classList.remove('hidden');
+            const results = document.getElementById('workflow-results');
+            
+            results.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm text-gray-600">Duration</p>
+                            <p class="font-semibold">${execution.duration_minutes} minutes</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Status</p>
+                            <p class="font-semibold ${execution.status === 'completed' ? 'text-green-600' : 'text-red-600'}">
+                                ${execution.status}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Steps Completed</p>
+                            <p class="font-semibold">${execution.steps.filter(s => s.status === 'completed').length}/${execution.steps.length}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t pt-4">
+                        <h3 class="font-medium text-gray-900 mb-3">Step Results</h3>
+                        ${execution.steps.map(step => `
+                            <div class="mb-3 p-3 border border-gray-200 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="font-medium">${step.agent}</span>
+                                    <span class="text-sm ${getStatusClass(step.status)} px-2 py-0.5 rounded-full">
+                                        ${step.status}
+                                    </span>
+                                </div>
+                                ${step.result ? `
+                                    <div class="text-sm text-gray-600 mt-2">
+                                        <a href="#" onclick="viewStepDetails('${execution.execution_id}', '${step.agent}')" class="text-blue-600 hover:underline">
+                                            View detailed output →
+                                        </a>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4 border-t">
+                        <button onclick="exportResults('${execution.execution_id}')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i data-lucide="download" class="w-4 h-4 inline mr-2"></i>
+                            Export Report
+                        </button>
+                        <button onclick="viewInAgentChat()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            View in Agent Chat
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            lucide.createIcons();
+        }
+        
+        async function viewStepDetails(executionId, agentId) {
+            try {
+                const response = await fetch(`/api/workflows/executions/${executionId}/step/${agentId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show step details in a modal
+                    showStepDetailsModal(data.step, data.task_details);
+                }
+            } catch (error) {
+                console.error('Error loading step details:', error);
+            }
+        }
+        
+        function showStepDetailsModal(step, taskDetails) {
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold">Step Details: ${step.agent}</h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Task</p>
+                                <p class="font-medium">${step.task}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Status</p>
+                                <span class="${getStatusClass(step.status)} px-3 py-1 rounded-full text-sm">
+                                    ${step.status}
+                                </span>
+                            </div>
+                            ${step.started_at ? `
+                                <div>
+                                    <p class="text-sm text-gray-600">Duration</p>
+                                    <p class="font-medium">${calculateDuration(step.started_at, step.completed_at)}</p>
+                                </div>
+                            ` : ''}
+                            ${taskDetails && taskDetails.length > 0 ? `
+                                <div>
+                                    <p class="text-sm text-gray-600 mb-2">Output</p>
+                                    <div class="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                                        <pre class="text-sm whitespace-pre-wrap">${escapeHtml(JSON.stringify(taskDetails, null, 2))}</pre>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            lucide.createIcons();
+        }
+        
+        function calculateDuration(start, end) {
+            if (!start || !end) return 'N/A';
+            const duration = new Date(end) - new Date(start);
+            const minutes = Math.floor(duration / 60000);
+            const seconds = Math.floor((duration % 60000) / 1000);
+            return `${minutes}m ${seconds}s`;
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                type === 'error' ? 'bg-red-500 text-white' : 
+                type === 'success' ? 'bg-green-500 text-white' : 
+                'bg-blue-500 text-white'
+            }`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function viewInAgentChat() {
+            window.location.href = '/';
+        }
+        
+        async function exportResults(executionId) {
+            // TODO: Implement export functionality
+            showNotification('Export functionality coming soon', 'info');
+        }
+        
+        function createCustomWorkflow() {
+            // TODO: Implement custom workflow builder
+            showNotification('Custom workflow builder coming soon', 'info');
+        }
+        
+        function selectWorkingDirectory() {
+            // TODO: Implement directory browser
+            showNotification('Directory browser coming soon', 'info');
+        }
+    </script>
+</body>
+</html>

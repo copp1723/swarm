@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Application Configuration Schema",
+  "type": "object",
+  "required": ["database", "redis", "api_keys"],
+  "properties": {
+    "database": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^(postgresql|mysql|sqlite)://",
+          "description": "Database connection URL"
+        },
+        "pool_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10
+        },
+        "pool_timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^redis(s)?://",
+          "description": "Redis connection URL"
+        },
+        "max_connections": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50
+        }
+      }
+    },
+    "api_keys": {
+      "type": "object",
+      "properties": {
+        "openrouter": {
+          "type": "string",
+          "minLength": 10,
+          "description": "OpenRouter API key"
+        },
+        "mailgun": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Mailgun API key"
+        },
+        "supermemory": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Supermemory API key"
+        }
+      }
+    },
+    "celery": {
+      "type": "object",
+      "properties": {
+        "broker_url": {
+          "type": "string",
+          "pattern": "^redis(s)?://",
+          "description": "Celery broker URL"
+        },
+        "result_backend": {
+          "type": "string",
+          "pattern": "^(redis|db\\+postgresql)://",
+          "description": "Celery result backend URL"
+        },
+        "task_time_limit": {
+          "type": "integer",
+          "minimum": 60,
+          "default": 3600
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+          "default": "INFO"
+        },
+        "format": {
+          "type": "string",
+          "default": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        },
+        "file": {
+          "type": "string",
+          "description": "Log file path"
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "secret_key": {
+          "type": "string",
+          "minLength": 32,
+          "description": "Flask secret key for sessions"
+        },
+        "webhook_secret": {
+          "type": "string",
+          "minLength": 16,
+          "description": "Webhook signature validation secret"
+        },
+        "cors_origins": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "default": ["http://localhost:3000"]
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "enable_memory": {
+          "type": "boolean",
+          "default": true
+        },
+        "enable_webhooks": {
+          "type": "boolean",
+          "default": true
+        },
+        "enable_websockets": {
+          "type": "boolean",
+          "default": true
+        },
+        "enable_async": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

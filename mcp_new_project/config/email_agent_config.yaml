@@ -1,0 +1,267 @@
+# Email Agent Configuration
+# This file contains all configuration for the Email Agent system
+
+# Agent Assignment Rules
+agent_assignment:
+  # Task type to agent mapping
+  task_type_mapping:
+    code_review:
+      primary: coder_01
+      supporting: [tester_01]
+      reason: "Code review requires coding expertise and testing validation"
+    
+    bug_report:
+      primary: bug_01
+      supporting: [coder_01, tester_01]
+      reason: "Bug investigation needs debugging expertise with coding and testing support"
+    
+    feature_request:
+      primary: product_01
+      supporting: [coder_01]
+      reason: "Feature requests need product planning with implementation support"
+    
+    documentation:
+      primary: product_01
+      supporting: []
+      reason: "Documentation tasks are handled by product agent"
+    
+    deployment:
+      primary: devops_01
+      supporting: [tester_01]
+      reason: "Deployment requires DevOps expertise with testing validation"
+    
+    investigation:
+      primary: bug_01
+      supporting: [coder_01]
+      reason: "Investigation tasks need analytical skills with coding support"
+    
+    general:
+      primary: general_01
+      supporting: []
+      reason: "General tasks are handled by the general assistant"
+    
+    email_processing:
+      primary: email_01
+      supporting: []
+      reason: "Email-specific tasks handled by email agent"
+
+  # Priority-based routing overrides
+  priority_overrides:
+    urgent:
+      always_include: [bug_01]  # Always include bug agent for urgent issues
+      escalate_to: product_01   # Escalate urgent items to product agent
+    
+    high:
+      notify_agents: [product_01, coder_01]  # Notify key agents
+
+# Task Processing Rules
+task_processing:
+  # Auto-dispatch rules
+  auto_dispatch:
+    enabled: true
+    priority_threshold: high  # Auto-dispatch high and urgent priority tasks
+    
+  # Queue settings
+  queue_settings:
+    max_queue_size: 1000
+    cleanup_after_days: 30
+    
+  # Retry policies
+  retry_policy:
+    max_attempts: 3
+    backoff_multiplier: 2
+    initial_delay_seconds: 60
+
+# Email Parsing Configuration
+email_parsing:
+  # Priority detection keywords
+  priority_keywords:
+    urgent:
+      - urgent
+      - asap
+      - critical
+      - emergency
+      - immediately
+      - right away
+      - high priority
+      - top priority
+      - fire
+      - burning
+      - blocker
+      - showstopper
+    
+    high:
+      - high priority
+      - important
+      - needed soon
+      - priority
+      - soon as possible
+      - by end of day
+      - eod
+      - today
+    
+    low:
+      - low priority
+      - when you have time
+      - when you get time
+      - no rush
+      - not urgent
+      - whenever
+      - nice to have
+      - optional
+      - if possible
+      - backlog
+      - eventually
+      - someday
+      - future
+
+  # Task type detection keywords
+  task_type_keywords:
+    code_review:
+      - review
+      - pr review
+      - code review
+      - merge request
+      - pull request
+    
+    bug_report:
+      - bug
+      - error
+      - issue
+      - broken
+      - fix
+      - crash
+      - failure
+      - not working
+    
+    feature_request:
+      - feature
+      - enhancement
+      - add
+      - implement
+      - new functionality
+      - improve
+    
+    documentation:
+      - docs
+      - documentation
+      - readme
+      - guide
+      - manual
+      - wiki
+    
+    deployment:
+      - deploy
+      - release
+      - production
+      - staging
+      - rollout
+    
+    investigation:
+      - investigate
+      - analyze
+      - research
+      - look into
+      - debug
+      - troubleshoot
+
+# Notification Configuration
+notifications:
+  # Channel priorities
+  channel_priority:
+    urgent: [pagerduty, slack, email]
+    high: [slack, email]
+    normal: [email]
+    low: [email]
+  
+  # Notification templates
+  templates:
+    new_task:
+      title: "📧 New Email Task: {priority} Priority"
+      include_fields: [title, type, assigned_to, deadline]
+    
+    task_completed:
+      title: "✅ Task Completed: {task_id}"
+      include_fields: [title, completed_by, duration]
+    
+    task_failed:
+      title: "❌ Task Failed: {task_id}"
+      include_fields: [title, error, retry_count]
+
+# Supermemory Configuration
+supermemory:
+  # Memory organization
+  collections:
+    email_tasks: "email_tasks_{date}"
+    agent_conversations: "agent_conversations_{date}"
+    shared_knowledge: "shared_knowledge"
+  
+  # Retention policies
+  retention:
+    email_tasks: 90  # days
+    agent_conversations: 30
+    shared_knowledge: 365
+  
+  # Search settings
+  search:
+    default_limit: 20
+    max_limit: 100
+    relevance_threshold: 0.7
+
+# Integration Points
+integrations:
+  # Webhook endpoints
+  webhooks:
+    mailgun:
+      path: /api/email-agent/webhooks/mailgun
+      signature_header: X-Mailgun-Signature
+      timestamp_max_age: 120  # seconds
+    
+    convoy:
+      path: /webhooks/mailgun
+      headers_prefix: X-Convoy
+  
+  # External services
+  services:
+    supermemory:
+      base_url: ${SUPERMEMORY_BASE_URL:-https://api.supermemory.ai/v3}
+      timeout: 30
+    
+    notification:
+      timeout: 10
+      batch_size: 10
+
+# Feature Flags
+features:
+  # Enable/disable features
+  auto_dispatch: true
+  email_parsing_ml: false  # Future ML enhancement
+  collaborative_tasks: true
+  realtime_updates: true
+  audit_logging: true
+  
+  # Experimental features
+  experimental:
+    smart_routing: false  # ML-based agent routing
+    auto_escalation: false  # Automatic priority escalation
+    sentiment_analysis: false  # Email sentiment detection
+
+# Performance Settings
+performance:
+  # Rate limiting
+  rate_limits:
+    webhooks_per_minute: 100
+    tasks_per_minute: 50
+    searches_per_minute: 30
+  
+  # Timeouts
+  timeouts:
+    webhook_processing: 30  # seconds
+    task_dispatch: 60
+    memory_operations: 30
+  
+  # Batch processing
+  batch_sizes:
+    memory_sync: 10
+    notification_batch: 5
+    cleanup_batch: 100

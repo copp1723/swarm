@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWARM Audit Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = { 
+                corePlugins: { preflight: false },
+                content: ['./audit-dashboard.html']
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        .audit-timeline-row:nth-child(odd) {
+            background-color: rgba(243, 244, 246, 0.5);
+        }
+        .audit-timeline-row:hover {
+            background-color: rgba(219, 234, 254, 0.4);
+        }
+        .status-success {
+            color: #10b981;
+        }
+        .status-error {
+            color: #ef4444;
+        }
+        .status-warning {
+            color: #f59e0b;
+        }
+        .status-info {
+            color: #3b82f6;
+        }
+        .loading {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center">
+                        <i data-lucide="shield-alert" class="w-8 h-8 mr-2"></i>
+                        <span class="text-xl font-bold">SWARM Audit Dashboard</span>
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700">Home</a>
+                    <a href="#" class="px-3 py-2 rounded-md text-sm font-medium bg-blue-700">Audit</a>
+                    <a href="/workflows" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700">Workflows</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Task ID Input -->
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Task Audit Trail</h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="flex-grow">
+                    <label for="task-id" class="block text-sm font-medium text-gray-700 mb-1">Task ID</label>
+                    <input type="text" id="task-id" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                           placeholder="Enter task ID to view audit trail">
+                </div>
+                <div class="flex items-end">
+                    <button id="fetch-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center">
+                        <i data-lucide="search" class="w-4 h-4 mr-2"></i>
+                        Fetch Audit Trail
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Results -->
+        <div id="audit-results" class="bg-white shadow-md rounded-lg p-6 hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-700">Audit Trail Results</h2>
+                    <p class="text-sm text-gray-500">Task ID: <span id="result-task-id" class="font-mono">-</span></p>
+                </div>
+                <div class="flex gap-2 mt-4 sm:mt-0">
+                    <button id="export-csv" class="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors flex items-center">
+                        <i data-lucide="file-text" class="w-4 h-4 mr-1"></i>
+                        Export CSV
+                    </button>
+                    <button id="export-pdf" class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors flex items-center">
+                        <i data-lucide="file" class="w-4 h-4 mr-1"></i>
+                        Export PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-timeline" class="bg-white divide-y divide-gray-200">
+                        <!-- Timeline entries will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="hidden bg-white shadow-md rounded-lg p-6 text-center">
+            <div class="flex flex-col items-center justify-center py-8">
+                <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-gray-600">Loading audit data...</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden bg-white shadow-md rounded-lg p-6">
+            <div class="flex items-center justify-center py-6">
+                <i data-lucide="alert-triangle" class="w-10 h-10 text-red-500 mr-4"></i>
+                <div>
+                    <h3 class="text-lg font-medium text-red-800">Error Loading Audit Data</h3>
+                    <p id="error-message" class="text-red-600 mt-1">Unable to fetch audit trail. Please try again.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden bg-white shadow-md rounded-lg p-6 text-center">
+            <div class="flex flex-col items-center justify-center py-8">
+                <i data-lucide="file-search" class="w-16 h-16 text-gray-400 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-700">No Audit Records Found</h3>
+                <p class="text-gray-500 mt-1">No audit records were found for the specified task ID.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">SWARM Audit System &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Elements
+        const taskIdInput = document.getElementById('task-id');
+        const fetchButton = document.getElementById('fetch-btn');
+        const auditResults = document.getElementById('audit-results');
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+        const emptyState = document.getElementById('empty-state');
+        const resultTaskId = document.getElementById('result-task-id');
+        const auditTimeline = document.getElementById('audit-timeline');
+        const errorMessage = document.getElementById('error-message');
+        const exportCsvBtn = document.getElementById('export-csv');
+        const exportPdfBtn = document.getElementById('export-pdf');
+
+        // Event Listeners
+        fetchButton.addEventListener('click', fetchAuditTrail);
+        taskIdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchAuditTrail();
+        });
+        exportCsvBtn.addEventListener('click', () => exportAudit('csv'));
+        exportPdfBtn.addEventListener('click', () => exportAudit('pdf'));
+
+        // Functions
+        function fetchAuditTrail() {
+            const taskId = taskIdInput.value.trim();
+            if (!taskId) {
+                showError('Please enter a valid task ID');
+                return;
+            }
+
+            // Show loading state
+            showLoading();
+
+            // Fetch audit trail
+            fetch(`/api/audit/task/${taskId}`, {
+                headers: getAuthHeaders()
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.audit_records || data.audit_records.length === 0) {
+                    showEmpty();
+                    return;
+                }
+                displayAuditTrail(data);
+            })
+            .catch(error => {
+                console.error('Error fetching audit trail:', error);
+                showError(error.message);
+            });
+        }
+
+        function displayAuditTrail(data) {
+            // Update task ID display
+            resultTaskId.textContent = data.task_id;
+            
+            // Clear existing timeline
+            auditTimeline.innerHTML = '';
+            
+            // Sort records by timestamp (newest first)
+            const records = [...data.audit_records].sort((a, b) => {
+                return new Date(b.timestamp) - new Date(a.timestamp);
+            });
+            
+            // Add records to timeline
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.className = 'audit-timeline-row';
+                
+                // Format timestamp
+                const timestamp = new Date(record.timestamp);
+                const formattedTime = timestamp.toLocaleString();
+                
+                // Determine status class
+                let statusClass = 'status-info';
+                if (record.status === 'success') statusClass = 'status-success';
+                if (record.status === 'error') statusClass = 'status-error';
+                if (record.status === 'warning') statusClass = 'status-warning';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formattedTime}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${record.agent_id || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${record.action || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass} font-medium">${record.status || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${record.message || '-'}</td>
+                `;
+                
+                auditTimeline.appendChild(row);
+            });
+            
+            // Show results
+            hideAllStates();
+            auditResults.classList.remove('hidden');
+        }
+
+        function exportAudit(format) {
+            const taskId = resultTaskId.textContent;
+            if (taskId === '-') return;
+            
+            if (format === 'pdf') {
+                // For PDF, we'll make the request but handle the 501 response
+                fetch(`/api/audit/task/${taskId}/export?format=pdf`, {
+                    headers: getAuthHeaders()
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error && data.error.includes('not implemented')) {
+                        alert('PDF export is not yet implemented. Please use CSV export instead.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error exporting PDF:', error);
+                    alert('PDF export is not available. Please use CSV export instead.');
+                });
+            } else {
+                // For CSV, we'll trigger a download
+                const url = `/api/audit/task/${taskId}/export?format=csv`;
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `audit_task_${taskId}.csv`;
+                
+                // Add auth header via fetch and blob
+                fetch(url, {
+                    headers: getAuthHeaders()
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    a.href = url;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Error downloading CSV:', error);
+                    alert('Error downloading CSV. Please try again.');
+                });
+            }
+        }
+
+        function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add API key if available in localStorage
+            const apiKey = localStorage.getItem('swarmApiKey');
+            if (apiKey) {
+                headers['X-API-Key'] = apiKey;
+            }
+            
+            return headers;
+        }
+
+        function showLoading() {
+            hideAllStates();
+            loadingState.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            hideAllStates();
+            errorMessage.textContent = message || 'An error occurred while fetching audit data';
+            errorState.classList.remove('hidden');
+        }
+
+        function showEmpty() {
+            hideAllStates();
+            emptyState.classList.remove('hidden');
+        }
+
+        function hideAllStates() {
+            auditResults.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            emptyState.classList.add('hidden');
+        }
+
+        // Check for task ID in URL query params
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('taskId');
+            if (taskId) {
+                taskIdInput.value = taskId;
+                fetchAuditTrail();
+            }
+        });
+    </script>
+</body>
+</html>

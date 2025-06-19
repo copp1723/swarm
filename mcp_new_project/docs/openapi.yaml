@@ -1,0 +1,1156 @@
+openapi: 3.0.3
+info:
+  title: MCP Multi-Agent Chat System API
+  description: |
+    A powerful multi-agent AI system for collaborative software development, featuring 
+    specialized agents for architecture, coding, testing, security, and DevOps, with 
+    advanced NLU capabilities and intelligent task orchestration.
+  version: 2.0.0
+  contact:
+    name: API Support
+    url: https://github.com/anthropics/claude-code/issues
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5006/api
+    description: Development server
+  - url: https://api.example.com/api/v2
+    description: Production server (v2)
+  - url: https://api.example.com/api/v1
+    description: Production server (v1 - deprecated)
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Agents
+    description: AI agent interactions and management
+  - name: NLU
+    description: Natural Language Understanding and task analysis
+  - name: Orchestration
+    description: Intelligent task routing and execution
+  - name: Tasks
+    description: Task management and history
+  - name: Plugins
+    description: Plugin system management
+  - name: Audit
+    description: Audit system and explainability
+  - name: MCP
+    description: Model Context Protocol integration
+  - name: Monitoring
+    description: System health and performance
+
+paths:
+  /agents/list:
+    get:
+      tags:
+        - Agents
+      summary: List available agents
+      description: Returns a list of all available AI agents with their capabilities
+      operationId: listAgents
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /agents/chat/{agent_id}:
+    post:
+      tags:
+        - Agents
+      summary: Chat with specific agent
+      description: Send a message to a specific AI agent and receive a response
+      operationId: chatWithAgent
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Unique identifier of the agent
+          schema:
+            type: string
+            example: developer_01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /agents/suggest:
+    post:
+      tags:
+        - Agents
+      summary: Get agent recommendations
+      description: Get AI agent recommendations based on task description
+      operationId: suggestAgents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuggestRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestResponse'
+
+  /agents/collaborate:
+    post:
+      tags:
+        - Agents
+      summary: Multi-agent collaboration
+      description: Execute a task using multiple agents working together
+      operationId: collaborateAgents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollaborateRequest'
+      responses:
+        '200':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollaborateResponse'
+
+  /agents/analyze:
+    post:
+      tags:
+        - NLU
+      summary: Analyze task with NLU
+      description: |
+        Analyze a task description using Natural Language Understanding to extract:
+        - Intent classification (12 types)
+        - Entity extraction (files, functions, errors, etc.)
+        - Context analysis (urgency, complexity)
+        - Technology detection
+      operationId: analyzeTask
+      x-available-since: "2.0.0"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeRequest'
+      responses:
+        '200':
+          description: Analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzeResponse'
+
+  /agents/orchestrate:
+    post:
+      tags:
+        - Orchestration
+      summary: Execute task with intelligent orchestration
+      description: |
+        Automatically analyze, route, and execute tasks using the most appropriate
+        agents and workflow. Supports dry-run mode for execution planning.
+      operationId: orchestrateTask
+      x-available-since: "2.0.0"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrchestrateRequest'
+      responses:
+        '200':
+          description: Orchestration complete or plan generated
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/OrchestrateDryRunResponse'
+                  - $ref: '#/components/schemas/OrchestrateExecutionResponse'
+
+  /tasks/{task_id}/status:
+    get:
+      tags:
+        - Tasks
+      summary: Get task status
+      description: Retrieve the current status and progress of a task
+      operationId: getTaskStatus
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatus'
+
+  /tasks:
+    get:
+      tags:
+        - Tasks
+      summary: List tasks
+      description: Get a paginated list of tasks
+      operationId: listTasks
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, failed]
+      responses:
+        '200':
+          description: Task list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  /plugins/:
+    get:
+      tags:
+        - Plugins
+      summary: List loaded plugins
+      description: Get information about all loaded plugins
+      operationId: listPlugins
+      x-available-since: "2.0.0"
+      responses:
+        '200':
+          description: Plugin list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginListResponse'
+
+  /plugins/{plugin_id}/reload:
+    post:
+      tags:
+        - Plugins
+      summary: Reload plugin
+      description: Hot-reload a specific plugin
+      operationId: reloadPlugin
+      x-available-since: "2.0.0"
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin reloaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginReloadResponse'
+
+  /audit/statistics:
+    get:
+      tags:
+        - Audit
+      summary: Get audit statistics
+      description: Retrieve audit system statistics and metrics
+      operationId: getAuditStatistics
+      x-available-since: "2.0.0"
+      parameters:
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+          description: Filter by specific agent
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date for statistics
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date for statistics
+      responses:
+        '200':
+          description: Audit statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditStatisticsResponse'
+
+  /audit/explain/{task_id}:
+    get:
+      tags:
+        - Audit
+      summary: Get task explanation
+      description: Get detailed explanation of task execution including decision reasoning
+      operationId: explainTask
+      x-available-since: "2.0.0"
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task explanation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskExplanationResponse'
+
+  /audit/level:
+    post:
+      tags:
+        - Audit
+      summary: Set audit level
+      description: Configure the level of detail for audit logging
+      operationId: setAuditLevel
+      x-available-since: "2.0.0"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditLevelRequest'
+      responses:
+        '200':
+          description: Audit level updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /mcp/servers:
+    get:
+      tags:
+        - MCP
+      summary: List MCP servers
+      description: Get status of all MCP servers
+      operationId: listMCPServers
+      responses:
+        '200':
+          description: MCP server list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPServerListResponse'
+
+  /monitoring/health:
+    get:
+      tags:
+        - Monitoring
+      summary: System health check
+      description: Get overall system health status
+      operationId: getHealth
+      security: []  # No auth required for health check
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /monitoring/metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Get performance metrics
+      description: Retrieve system performance metrics
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Message to send to the agent
+          example: "Create a REST API endpoint for user authentication"
+        enhance_prompt:
+          type: boolean
+          default: true
+          description: Whether to enhance the prompt for better results
+        include_context:
+          type: boolean
+          default: true
+          description: Include conversation context
+        session_id:
+          type: string
+          description: Optional session ID for conversation continuity
+
+    ChatResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        response:
+          type: string
+          description: Agent's response
+        agent:
+          type: string
+          description: Agent ID that responded
+        timestamp:
+          type: string
+          format: date-time
+        enhanced:
+          type: boolean
+          description: Whether prompt was enhanced
+        original_message:
+          type: string
+          description: Original message if enhanced
+
+    AnalyzeRequest:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          type: string
+          description: Task description to analyze
+          example: "Fix the critical bug in payment processing that's causing transactions to fail"
+
+    AnalyzeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        analysis:
+          type: object
+          properties:
+            intent:
+              $ref: '#/components/schemas/IntentAnalysis'
+            entities:
+              $ref: '#/components/schemas/ExtractedEntities'
+            structured_task:
+              $ref: '#/components/schemas/StructuredTask'
+
+    IntentAnalysis:
+      type: object
+      properties:
+        primary:
+          type: string
+          enum: 
+            - code_development
+            - bug_fixing
+            - code_review
+            - testing
+            - documentation
+            - architecture
+            - security_analysis
+            - performance
+            - refactoring
+            - deployment
+            - debugging
+            - general_query
+        secondary:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    ExtractedEntities:
+      type: object
+      properties:
+        file_paths:
+          type: array
+          items:
+            type: string
+        functions:
+          type: array
+          items:
+            type: string
+        classes:
+          type: array
+          items:
+            type: string
+        modules:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+        technologies:
+          type: array
+          items:
+            type: string
+        urgency:
+          type: string
+          enum: [critical, high, medium, low]
+
+    StructuredTask:
+      type: object
+      properties:
+        task_type:
+          type: string
+        recommended_agents:
+          type: array
+          items:
+            type: string
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+        complexity:
+          type: string
+          enum: [low, medium, high]
+        estimated_effort:
+          type: string
+          enum: [low, medium, high]
+
+    OrchestrateRequest:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          type: string
+          description: Task to execute
+        working_directory:
+          type: string
+          description: Working directory path
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+          default: medium
+        emergency:
+          type: boolean
+          default: false
+        dry_run:
+          type: boolean
+          default: false
+          description: If true, only return execution plan without executing
+        context:
+          type: object
+          additionalProperties: true
+          description: Additional context for task execution
+
+    OrchestrateDryRunResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        plan:
+          $ref: '#/components/schemas/ExecutionPlan'
+
+    ExecutionPlan:
+      type: object
+      properties:
+        task_id:
+          type: string
+        priority:
+          type: string
+        estimated_duration:
+          type: integer
+          description: Estimated duration in seconds
+        nlu_analysis:
+          $ref: '#/components/schemas/IntentAnalysis'
+        routing:
+          $ref: '#/components/schemas/RoutingDecision'
+        execution_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionStep'
+
+    RoutingDecision:
+      type: object
+      properties:
+        primary_agents:
+          type: array
+          items:
+            type: string
+        supporting_agents:
+          type: array
+          items:
+            type: string
+        workflow_type:
+          type: string
+          enum:
+            - sequential
+            - parallel
+            - conditional
+            - bug_fix_workflow
+            - feature_development
+            - security_audit
+            - testing_workflow
+        confidence:
+          type: number
+          format: float
+        reasoning:
+          type: string
+
+    ExecutionStep:
+      type: object
+      properties:
+        step_number:
+          type: integer
+        step:
+          type: string
+          description: Step description
+        agent:
+          type: string
+          description: Agent responsible for this step
+        action:
+          type: string
+          description: Action to perform
+        dependencies:
+          type: array
+          items:
+            type: string
+          description: Steps that must complete before this one
+        estimated_duration:
+          type: integer
+          description: Estimated duration in seconds
+
+    OrchestrateExecutionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        task_id:
+          type: string
+        orchestration:
+          type: object
+          properties:
+            plan_id:
+              type: string
+            routing_decision:
+              $ref: '#/components/schemas/RoutingDecision'
+            execution_summary:
+              type: object
+              properties:
+                steps_completed:
+                  type: integer
+                steps_total:
+                  type: integer
+                duration:
+                  type: integer
+                status:
+                  type: string
+            estimated_vs_actual:
+              type: object
+              properties:
+                estimated_duration:
+                  type: integer
+                actual_duration:
+                  type: integer
+                variance_percentage:
+                  type: number
+        result:
+          type: object
+          additionalProperties: true
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationEntry'
+
+    ConversationEntry:
+      type: object
+      properties:
+        agent:
+          type: string
+        role:
+          type: string
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    SuggestRequest:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          type: string
+        include_details:
+          type: boolean
+          default: false
+
+    SuggestResponse:
+      type: object
+      properties:
+        suggested_roles:
+          type: array
+          items:
+            type: string
+        reasoning:
+          type: string
+        confidence:
+          type: number
+          format: float
+        agent_details:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              name:
+                type: string
+              expertise:
+                type: array
+                items:
+                  type: string
+
+    CollaborateRequest:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          type: string
+        agents:
+          type: array
+          items:
+            type: string
+        workflow:
+          type: string
+          enum: [sequential, parallel]
+          default: sequential
+        context:
+          type: object
+          additionalProperties: true
+
+    CollaborateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        task_id:
+          type: string
+        status:
+          type: string
+        agents_assigned:
+          type: array
+          items:
+            type: string
+        estimated_completion:
+          type: string
+          format: date-time
+
+    TaskStatus:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        result:
+          type: object
+          properties:
+            success:
+              type: boolean
+            summary:
+              type: string
+
+    TaskListResponse:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              title:
+                type: string
+              status:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    AgentListResponse:
+      type: object
+      properties:
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+              description:
+                type: string
+              capabilities:
+                type: array
+                items:
+                  type: string
+
+    PluginListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        plugin_count:
+          type: integer
+        plugins:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              info:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  version:
+                    type: string
+                  description:
+                    type: string
+                  author:
+                    type: string
+              status:
+                type: string
+                enum: [active, inactive, error]
+              loaded_at:
+                type: string
+                format: date-time
+
+    PluginReloadResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        plugin_id:
+          type: string
+
+    AuditStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        statistics:
+          type: object
+          properties:
+            total_records:
+              type: integer
+            success_rate:
+              type: number
+              format: float
+            agents:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  tasks:
+                    type: integer
+                  success_rate:
+                    type: number
+                  avg_duration:
+                    type: number
+            by_intent:
+              type: object
+              additionalProperties:
+                type: integer
+
+    TaskExplanationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        explanation:
+          type: object
+          properties:
+            task_id:
+              type: string
+            intent_analysis:
+              type: object
+              properties:
+                detected_intent:
+                  type: string
+                confidence:
+                  type: number
+                reasoning:
+                  type: string
+            agent_selection:
+              type: object
+              properties:
+                selected:
+                  type: array
+                  items:
+                    type: string
+                reasoning:
+                  type: string
+            execution_trace:
+              type: array
+              items:
+                type: object
+                properties:
+                  step:
+                    type: integer
+                  agent:
+                    type: string
+                  action:
+                    type: string
+                  duration:
+                    type: integer
+                  result:
+                    type: string
+            performance_analysis:
+              type: object
+              properties:
+                total_duration:
+                  type: integer
+                efficiency_score:
+                  type: number
+                suggestions:
+                  type: array
+                  items:
+                    type: string
+
+    AuditLevelRequest:
+      type: object
+      required:
+        - level
+      properties:
+        level:
+          type: string
+          enum: [minimal, standard, detailed, debug]
+
+    MCPServerListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            servers:
+              type: object
+              properties:
+                total:
+                  type: integer
+                running:
+                  type: integer
+                servers:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                      pid:
+                        type: integer
+                      tools:
+                        type: integer
+                      tool_names:
+                        type: array
+                        items:
+                          type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        services:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [ok, error]
+            redis:
+              type: string
+              enum: [ok, error]
+            mcp_servers:
+              type: string
+              enum: [ok, error]
+            celery:
+              type: string
+              enum: [ok, error]
+        metrics:
+          type: object
+          properties:
+            uptime_seconds:
+              type: integer
+            active_tasks:
+              type: integer
+            queue_size:
+              type: integer
+
+    MetricsResponse:
+      type: object
+      properties:
+        metrics:
+          type: object
+          properties:
+            request_rate:
+              type: number
+              description: Requests per second
+            average_response_time:
+              type: integer
+              description: Average response time in milliseconds
+            error_rate:
+              type: number
+              description: Error rate percentage
+            active_connections:
+              type: integer
+            cpu_usage:
+              type: number
+              description: CPU usage percentage
+            memory_usage:
+              type: number
+              description: Memory usage percentage
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              example: "INVALID_REQUEST"
+            message:
+              type: string
+              example: "Task description is required"
+            details:
+              type: object
+              additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Unauthorized:
+      description: Unauthorized - Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

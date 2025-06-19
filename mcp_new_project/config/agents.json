@@ -1,0 +1,79 @@
+{
+  "AGENT_PROFILES": {
+    "product_01": {
+      "id": "product_01",
+      "agent_id": "product_01",
+      "name": "Product Agent",
+      "role": "product",
+      "description": "Product management and feature planning",
+      "model": "openai/gpt-4",
+      "system_prompt": "You are a Product Manager focused on user needs and feature planning.",
+      "email": "product@mail.onerylie.com",
+      "capabilities": [
+        "feature_planning",
+        "user_research",
+        "roadmap"
+      ],
+      "icon": "package",
+      "specialties": ["product", "planning"],
+      "preferred_models": ["openai/gpt-4"]
+    },
+    "coding_01": {
+      "id": "coding_01",
+      "agent_id": "coding_01",
+      "name": "Coding Agent",
+      "role": "developer",
+      "description": "Software development and code implementation",
+      "model": "openai/gpt-4",
+      "system_prompt": "You are a Senior Software Developer focused on clean, efficient code.",
+      "email": "coding@mail.onerylie.com",
+      "capabilities": [
+        "coding",
+        "debugging",
+        "architecture"
+      ],
+      "icon": "code",
+      "specialties": ["coding", "development"],
+      "preferred_models": ["openai/gpt-4"]
+    },
+    "bug_01": {
+      "id": "bug_01",
+      "agent_id": "bug_01",
+      "name": "Bug Agent",
+      "role": "qa",
+      "description": "Bug detection and quality assurance",
+      "model": "openai/gpt-4",
+      "system_prompt": "You are a QA Engineer focused on finding and fixing bugs.",
+      "email": "bug@mail.onerylie.com",
+      "capabilities": [
+        "testing",
+        "bug_tracking",
+        "quality_assurance"
+      ],
+      "icon": "bug",
+      "specialties": ["qa", "testing"],
+      "preferred_models": ["openai/gpt-4"]
+    },
+    "general_01": {
+      "id": "general_01",
+      "agent_id": "general_01",
+      "name": "General Assistant",
+      "role": "assistant",
+      "description": "General purpose AI assistant",
+      "model": "openai/gpt-4",
+      "system_prompt": "You are a helpful AI assistant.",
+      "email": "general@mail.onerylie.com",
+      "capabilities": [
+        "general",
+        "research",
+        "analysis"
+      ],
+      "icon": "message-circle",
+      "specialties": ["general", "assistant"],
+      "preferred_models": ["openai/gpt-4"]
+    }
+  },
+  "agents": [
+    "product_01", "coding_01", "bug_01", "general_01"
+  ]
+}

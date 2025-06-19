@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Chat Performance Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="stylesheet" href="virtual-chat.css">
+    <style>
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            height: 100vh;
+            gap: 1rem;
+            padding: 1rem;
+        }
+        
+        .chat-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            background: #f8fafc;
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        .chat-area {
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .controls-panel {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            height: fit-content;
+        }
+        
+        .performance-stats {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 0.25rem;
+        }
+        
+        .btn:hover {
+            background: #f3f4f6;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .input-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .input-group input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="performance-grid">
+        <!-- Virtual Chat Container -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2 class="text-lg font-semibold text-gray-900">Virtual Chat Performance Test</h2>
+                <div class="flex items-center space-x-2">
+                    <span id="message-count" class="text-sm text-gray-600">0 messages</span>
+                    <span id="fps-counter" class="text-sm text-green-600">60 FPS</span>
+                </div>
+            </div>
+            <div id="virtual-chat-test" class="chat-area"></div>
+        </div>
+        
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <h3 class="text-lg font-semibold mb-4">Performance Controls</h3>
+            
+            <div class="control-group">
+                <h4 class="font-medium mb-2">Message Generation</h4>
+                <div class="input-group">
+                    <label>Number of messages:</label>
+                    <input type="number" id="message-count-input" value="1000" min="10" max="50000">
+                </div>
+                <button class="btn btn-primary" onclick="generateMessages()">Generate Messages</button>
+                <button class="btn" onclick="clearMessages()">Clear All</button>
+            </div>
+            
+            <div class="control-group">
+                <h4 class="font-medium mb-2">Scroll Testing</h4>
+                <button class="btn" onclick="scrollToTop()">Scroll to Top</button>
+                <button class="btn" onclick="scrollToBottom()">Scroll to Bottom</button>
+                <button class="btn" onclick="scrollToMiddle()">Scroll to Middle</button>
+                <button class="btn" onclick="autoScroll()">Auto Scroll Test</button>
+            </div>
+            
+            <div class="control-group">
+                <h4 class="font-medium mb-2">Stress Testing</h4>
+                <button class="btn" onclick="rapidMessageTest()">Rapid Messages</button>
+                <button class="btn" onclick="largeMessageTest()">Large Messages</button>
+                <button class="btn" onclick="mixedContentTest()">Mixed Content</button>
+            </div>
+            
+            <div class="control-group">
+                <h4 class="font-medium mb-2">Configuration</h4>
+                <div class="input-group">
+                    <label>Item Height (px):</label>
+                    <input type="number" id="item-height" value="100" min="50" max="300">
+                </div>
+                <div class="input-group">
+                    <label>Overscan:</label>
+                    <input type="number" id="overscan" value="5" min="1" max="20">
+                </div>
+                <button class="btn" onclick="updateConfig()">Update Config</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Performance Stats -->
+    <div class="performance-stats" id="performance-stats">
+        <div>Loading performance stats...</div>
+    </div>
+
+    <script src="virtual-chat.js"></script>
+    <script>
+        let virtualChat;
+        let fpsCounter = 0;
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let isRunning = false;
+        
+        // Initialize virtual chat
+        function initVirtualChat() {
+            virtualChat = new VirtualChatContainer('virtual-chat-test', {
+                itemHeight: parseInt(document.getElementById('item-height').value),
+                overscan: parseInt(document.getElementById('overscan').value),
+                scrollThreshold: 50,
+                maxMessages: 50000
+            });
+            
+            console.log('Virtual chat initialized for performance testing');
+            updateStats();
+        }
+        
+        // Generate test messages
+        function generateMessages() {
+            const count = parseInt(document.getElementById('message-count-input').value);
+            const startTime = performance.now();
+            
+            const messages = [];
+            for (let i = 0; i < count; i++) {
+                messages.push({
+                    id: `test_${i}_${Date.now()}`,
+                    type: i % 3 === 0 ? 'user' : 'agent',
+                    content: generateTestContent(i),
+                    agentName: i % 3 === 0 ? 'You' : `Agent ${(i % 5) + 1}`,
+                    timestamp: new Date(Date.now() - (count - i) * 1000).toISOString(),
+                    enhanced: Math.random() > 0.8
+                });
+            }
+            
+            virtualChat.addMessages(messages);
+            
+            const endTime = performance.now();
+            console.log(`Generated ${count} messages in ${(endTime - startTime).toFixed(2)}ms`);
+            
+            updateStats();
+        }
+        
+        function generateTestContent(index) {
+            const contentTypes = [
+                // Short message
+                `Short message ${index}`,
+                
+                // Medium message
+                `This is a medium-length message ${index}. It contains multiple sentences to test how the virtual scrolling handles messages of varying lengths. Lorem ipsum dolor sit amet, consectetur adipiscing elit.`,
+                
+                // Long message with formatting
+                `# Header ${index}
+
+This is a **long message** with *formatting*. It includes:
+
+1. Numbered lists
+2. Multiple paragraphs
+3. Code blocks
+
+\`\`\`javascript
+function test() {
+    console.log("Testing virtual scroll performance");
+    return ${index};
+}
+\`\`\`
+
+## Subsection
+
+More content here to make this message quite long. This tests how the virtual scrolling system handles messages of varying heights and complex HTML content.
+
+- Bullet point 1
+- Bullet point 2
+- Bullet point 3`,
+                
+                // Code-heavy message
+                `Here's some code for message ${index}:
+
+\`\`\`python
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+# Generate sequence
+for i in range(10):
+    print(f"fib({i}) = {fibonacci(i)}")
+\`\`\`
+
+This message tests code formatting performance.`,
+                
+                // List-heavy message
+                `Task list for message ${index}:
+
+### Completed Tasks
+- [x] Task 1
+- [x] Task 2
+- [x] Task 3
+
+### Pending Tasks
+- [ ] Task 4
+- [ ] Task 5
+- [ ] Task 6
+
+### Future Tasks
+- [ ] Task 7
+- [ ] Task 8
+- [ ] Task 9
+- [ ] Task 10`
+            ];
+            
+            return contentTypes[index % contentTypes.length];
+        }
+        
+        function clearMessages() {
+            virtualChat.clearMessages();
+            updateStats();
+        }
+        
+        function scrollToTop() {
+            virtualChat.wrapper.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        function scrollToBottom() {
+            virtualChat.scrollToBottom(true);
+        }
+        
+        function scrollToMiddle() {
+            const middle = virtualChat.totalHeight / 2;
+            virtualChat.wrapper.scrollTo({ top: middle, behavior: 'smooth' });
+        }
+        
+        function autoScroll() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            let direction = 1;
+            let currentPos = 0;
+            const maxScroll = virtualChat.totalHeight;
+            const step = 100;
+            
+            function scroll() {
+                if (!isRunning) return;
+                
+                currentPos += direction * step;
+                
+                if (currentPos >= maxScroll) {
+                    direction = -1;
+                    currentPos = maxScroll;
+                } else if (currentPos <= 0) {
+                    direction = 1;
+                    currentPos = 0;
+                }
+                
+                virtualChat.wrapper.scrollTo({ top: currentPos, behavior: 'auto' });
+                
+                if (Math.random() > 0.95) { // 5% chance to stop
+                    isRunning = false;
+                    console.log('Auto scroll test completed');
+                    return;
+                }
+                
+                requestAnimationFrame(scroll);
+            }
+            
+            scroll();
+        }
+        
+        function rapidMessageTest() {
+            let count = 0;
+            const interval = setInterval(() => {
+                virtualChat.addMessage({
+                    type: count % 2 === 0 ? 'user' : 'agent',
+                    content: `Rapid message ${count}. Testing real-time message addition performance.`,
+                    agentName: count % 2 === 0 ? 'You' : 'Assistant'
+                });
+                count++;
+                
+                if (count >= 100) {
+                    clearInterval(interval);
+                    console.log('Rapid message test completed');
+                }
+                
+                updateStats();
+            }, 50); // 20 messages per second
+        }
+        
+        function largeMessageTest() {
+            const largeContent = `# Large Message Test
+
+This is an extremely large message designed to test the performance of virtual scrolling with very tall message items.
+
+${'\\n\\n'.repeat(50)}
+
+## Multiple Sections
+
+${'This is repeated content. '.repeat(100)}
+
+### Code Section
+
+\`\`\`javascript
+${'// Large code block\\n'.repeat(50)}
+function largeFunction() {
+    console.log("Testing large content rendering");
+    ${'    // More code\\n'.repeat(30)}
+}
+\`\`\`
+
+### List Section
+
+${Array.from({length: 50}, (_, i) => `- List item ${i + 1}`).join('\\n')}
+
+### Final Section
+
+${'This message tests how the virtual scrolling system handles extremely tall message items. '.repeat(20)}`;
+            
+            for (let i = 0; i < 10; i++) {
+                virtualChat.addMessage({
+                    type: i % 2 === 0 ? 'user' : 'agent',
+                    content: largeContent,
+                    agentName: i % 2 === 0 ? 'You' : 'Assistant'
+                });
+            }
+            
+            updateStats();
+        }
+        
+        function mixedContentTest() {
+            const contentTypes = [
+                'Short',
+                'Medium length message with some more text to make it longer than the short one.',
+                `# Long Message
+
+This is a long message with **formatting**.
+
+## Features:
+- Lists
+- Code blocks
+- Multiple paragraphs
+
+\`\`\`code
+function example() {
+    return "formatted content";
+}
+\`\`\`
+
+And more content to make it quite tall.`,
+                '🎉 Emoji message! 🚀✨💫🌟',
+                'URL test: https://example.com and email@example.com',
+                `| Table | Test |
+|-------|------|
+| Cell 1| Cell 2|
+| Cell 3| Cell 4|`,
+                'Simple message',
+                'Another **bold** and *italic* text example'
+            ];
+            
+            for (let i = 0; i < 200; i++) {
+                virtualChat.addMessage({
+                    type: Math.random() > 0.5 ? 'user' : 'agent',
+                    content: contentTypes[i % contentTypes.length],
+                    agentName: Math.random() > 0.5 ? 'You' : `Agent ${(i % 3) + 1}`,
+                    enhanced: Math.random() > 0.7
+                });
+            }
+            
+            updateStats();
+        }
+        
+        function updateConfig() {
+            const itemHeight = parseInt(document.getElementById('item-height').value);
+            const overscan = parseInt(document.getElementById('overscan').value);
+            
+            // Reinitialize with new config
+            if (virtualChat) {
+                const messages = virtualChat.messages;
+                virtualChat.destroy();
+                
+                virtualChat = new VirtualChatContainer('virtual-chat-test', {
+                    itemHeight: itemHeight,
+                    overscan: overscan,
+                    scrollThreshold: 50,
+                    maxMessages: 50000
+                });
+                
+                if (messages.length > 0) {
+                    virtualChat.addMessages(messages);
+                }
+            }
+            
+            updateStats();
+        }
+        
+        function updateStats() {
+            if (!virtualChat) return;
+            
+            const stats = virtualChat.getPerformanceStats();
+            const range = virtualChat.getVisibleRange();
+            
+            document.getElementById('message-count').textContent = `${stats.totalMessages} messages`;
+            
+            const statsEl = document.getElementById('performance-stats');
+            statsEl.innerHTML = `
+                <div><strong>Performance Statistics</strong></div>
+                <div>Total Messages: ${stats.totalMessages}</div>
+                <div>Visible Messages: ${range.end - range.start + 1} (${range.start}-${range.end})</div>
+                <div>Measured Heights: ${stats.measuredHeights}</div>
+                <div>Total Height: ${stats.totalHeight}px</div>
+                <div>Container Height: ${stats.containerHeight}px</div>
+                <div>Memory Usage: ~${Math.round(stats.memoryUsage.messages / 1024)}KB</div>
+                <div>Height Cache: ~${Math.round(stats.memoryUsage.heightCache / 1024)}KB</div>
+                <div>At Bottom: ${virtualChat.isAtBottom()}</div>
+                <div>Auto Scroll: ${virtualChat.isAutoScrollEnabled}</div>
+            `;
+        }
+        
+        // FPS Counter
+        function updateFPS() {
+            const now = performance.now();
+            frameCount++;
+            
+            if (now >= lastTime + 1000) {
+                fpsCounter = Math.round((frameCount * 1000) / (now - lastTime));
+                document.getElementById('fps-counter').textContent = `${fpsCounter} FPS`;
+                frameCount = 0;
+                lastTime = now;
+            }
+            
+            requestAnimationFrame(updateFPS);
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initVirtualChat();
+            updateFPS();
+            
+            // Update stats every second
+            setInterval(updateStats, 1000);
+            
+            console.log('Virtual chat performance test initialized');
+            console.log('Available commands:');
+            console.log('- generateMessages()');
+            console.log('- rapidMessageTest()');
+            console.log('- largeMessageTest()');
+            console.log('- mixedContentTest()');
+            console.log('- virtualChat.getPerformanceStats()');
+        });
+        
+        // Expose to window for debugging
+        window.virtualChat = virtualChat;
+        window.testFunctions = {
+            generateMessages,
+            rapidMessageTest,
+            largeMessageTest,
+            mixedContentTest,
+            updateStats
+        };
+    </script>
+</body>
+</html>

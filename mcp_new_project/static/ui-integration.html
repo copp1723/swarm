@@ -1,0 +1,121 @@
+<!-- UI Enhancement Integration Script -->
+<!-- Add this to the bottom of index.html before the closing </body> tag -->
+
+<!-- Load the enhancement CSS -->
+<link rel="stylesheet" href="/static/css/ui-enhancements.css">
+
+<!-- Load the enhancement JavaScript -->
+<script src="/static/js/ui-enhancements/agent-enhancements.js"></script>
+
+<script>
+// Quick integration script to ensure compatibility with existing code
+document.addEventListener('DOMContentLoaded', function() {
+    // Update existing agent windows with new profiles
+    const agentMapping = {
+        'planner_01': 'product_01',  // Architect -> Product Agent
+        'architect_01': 'product_01', // Alternative mapping
+        'security_01': 'bug_01',      // Security -> Bug Agent
+        'developer_01': 'coder_01'    // Developer -> Coding Agent (if needed)
+    };
+
+    // Remap agent IDs if needed
+    Object.entries(agentMapping).forEach(([oldId, newId]) => {
+        const oldWindow = document.getElementById(`agent-window-${oldId}`);
+        if (oldWindow) {
+            oldWindow.id = `agent-window-${newId}`;
+            // Update any references
+            const checkbox = document.querySelector(`input[value="${oldId}"]`);
+            if (checkbox) {
+                checkbox.value = newId;
+            }
+        }
+    });
+
+    // Initialize Lucide icons if not already done
+    if (window.lucide && !window.lucideInitialized) {
+        lucide.createIcons();
+        window.lucideInitialized = true;
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K: Quick search/focus
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            const searchInput = document.querySelector('#quick-search') || 
+                               document.querySelector('input[type="search"]') ||
+                               document.querySelector('#collab-task');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+
+        // Ctrl/Cmd + Enter: Send message in focused chat
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            const activeInput = document.activeElement;
+            if (activeInput && activeInput.classList.contains('chat-input')) {
+                const agentId = activeInput.id.replace('input-', '');
+                const sendButton = document.querySelector(`#agent-window-${agentId} .send-button`);
+                if (sendButton) {
+                    sendButton.click();
+                }
+            }
+        }
+
+        // Alt + 1-7: Focus specific agents
+        if (e.altKey && e.key >= '1' && e.key <= '7') {
+            e.preventDefault();
+            const agentIndex = parseInt(e.key) - 1;
+            const agents = ['product_01', 'coder_01', 'tester_01', 'bug_01', 'devops_01', 'general_01', 'email_01'];
+            const agentId = agents[agentIndex];
+            if (agentId) {
+                const agentWindow = document.getElementById(`agent-window-${agentId}`);
+                if (agentWindow) {
+                    const input = agentWindow.querySelector('.chat-input');
+                    if (input) {
+                        input.focus();
+                    }
+                }
+            }
+        }
+
+        // Alt + C: Focus collaboration hub
+        if (e.altKey && e.key === 'c') {
+            e.preventDefault();
+            const collabTask = document.getElementById('collab-task');
+            if (collabTask) {
+                collabTask.focus();
+            }
+        }
+    });
+
+    // Enhance existing send buttons with loading states
+    document.querySelectorAll('.send-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const originalContent = this.innerHTML;
+            this.innerHTML = '<span class="loading-spinner"></span>';
+            this.disabled = true;
+            
+            // Reset after response (this should be triggered by actual response)
+            setTimeout(() => {
+                this.innerHTML = originalContent;
+                this.disabled = false;
+            }, 1000);
+        });
+    });
+
+    // Add smooth scrolling to chat areas
+    document.querySelectorAll('.chat-area').forEach(area => {
+        area.style.scrollBehavior = 'smooth';
+    });
+
+    // Log successful initialization
+    console.log('UI Enhancements initialized successfully');
+    
+    // Show a subtle notification
+    if (window.agentUIEnhancements) {
+        window.agentUIEnhancements.showNotification('UI enhancements loaded', 'success');
+    }
+});
+</script>

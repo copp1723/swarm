@@ -1,0 +1,6 @@
+{
+  "task_description": "I need help building a new feature. @product_01 can you design it? @coding_01 can you implement it?",
+  "tagged_agents": ["product_01", "coding_01"],
+  "model": "openai/gpt-4",
+  "enhance_prompt": false
+}

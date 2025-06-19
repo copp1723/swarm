@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat System Debug Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.pending { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        button.primary {
+            background: #007bff;
+            color: white;
+        }
+        button.primary:hover {
+            background: #0056b3;
+        }
+        button.secondary {
+            background: #6c757d;
+            color: white;
+        }
+        button.secondary:hover {
+            background: #545b62;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .success-message {
+            color: #28a745;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        #console-output {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            padding: 10px;
+            overflow-y: auto;
+            border-top: 2px solid #333;
+        }
+        .console-error { color: #f48771; }
+        .console-warn { color: #dcdcaa; }
+        .console-info { color: #9cdcfe; }
+        .console-success { color: #4ec9b0; }
+    </style>
+</head>
+<body>
+    <h1>Chat System Debug Test</h1>
+    
+    <!-- Server Connection Test -->
+    <div class="test-section">
+        <div class="test-header">
+            <h2>1. Server Connection</h2>
+            <span id="server-status" class="status pending">Checking...</span>
+        </div>
+        <div id="server-log" class="log-output"></div>
+        <div class="test-controls">
+            <button class="primary" onclick="testServerConnection()">Test Connection</button>
+            <button class="secondary" onclick="checkHealth()">Check Health</button>
+        </div>
+    </div>
+
+    <!-- WebSocket Test -->
+    <div class="test-section">
+        <div class="test-header">
+            <h2>2. WebSocket Connection</h2>
+            <span id="ws-status" class="status pending">Not Connected</span>
+        </div>
+        <div id="ws-log" class="log-output"></div>
+        <div class="test-controls">
+            <button class="primary" onclick="connectWebSocket()">Connect WebSocket</button>
+            <button class="secondary" onclick="disconnectWebSocket()">Disconnect</button>
+        </div>
+    </div>
+
+    <!-- Agent Chat Test -->
+    <div class="test-section">
+        <div class="test-header">
+            <h2>3. Agent Chat (1v1)</h2>
+            <span id="chat-status" class="status pending">Not Tested</span>
+        </div>
+        <div id="chat-log" class="log-output"></div>
+        <div class="test-controls">
+            <button class="primary" onclick="testAgentChat()">Test Agent Chat</button>
+            <button class="secondary" onclick="testChatHistory()">Test Chat History</button>
+        </div>
+    </div>
+
+    <!-- Multi-Agent Test -->
+    <div class="test-section">
+        <div class="test-header">
+            <h2>4. Multi-Agent Collaboration</h2>
+            <span id="collab-status" class="status pending">Not Tested</span>
+        </div>
+        <div id="collab-log" class="log-output"></div>
+        <div class="test-controls">
+            <button class="primary" onclick="testMultiAgent()">Test Collaboration</button>
+            <button class="secondary" onclick="testMentions()">Test @mentions</button>
+        </div>
+    </div>
+
+    <!-- Memory Status -->
+    <div class="test-section">
+        <div class="test-header">
+            <h2>5. Memory & Performance</h2>
+            <span id="memory-status" class="status info">Ready</span>
+        </div>
+        <div id="memory-log" class="log-output"></div>
+        <div class="test-controls">
+            <button class="primary" onclick="checkMemory()">Check Memory</button>
+            <button class="secondary" onclick="optimizeMemory()">Optimize</button>
+        </div>
+    </div>
+
+    <!-- Console Output -->
+    <div id="console-output"></div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Global variables
+        let socket = null;
+        const API_BASE = 'http://localhost:5006/api';
+        const API_KEY = localStorage.getItem('swarm_api_key') || '';
+
+        // Console logger
+        function log(message, type = 'info') {
+            const console = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `console-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            console.appendChild(entry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // Update status indicator
+        function updateStatus(elementId, status, message = '') {
+            const element = document.getElementById(elementId);
+            element.className = `status ${status}`;
+            element.textContent = message || status.toUpperCase();
+        }
+
+        // Log to specific output area
+        function logToArea(areaId, message) {
+            const area = document.getElementById(areaId);
+            const timestamp = new Date().toLocaleTimeString();
+            area.innerHTML += `[${timestamp}] ${message}\n`;
+            area.scrollTop = area.scrollHeight;
+        }
+
+        // API request helper
+        async function apiRequest(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            if (API_KEY) {
+                headers['X-API-Key'] = API_KEY;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+                
+                return data;
+            } catch (error) {
+                log(`API Error: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Test server connection
+        async function testServerConnection() {
+            logToArea('server-log', 'Testing server connection...');
+            updateStatus('server-status', 'pending', 'Testing...');
+            
+            try {
+                const response = await fetch(`${API_BASE.replace('/api', '')}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    updateStatus('server-status', 'success', 'Connected');
+                    logToArea('server-log', `Server healthy - Memory: ${data.memory?.usage_mb || 'N/A'}MB`);
+                    log('Server connection successful', 'success');
+                } else {
+                    updateStatus('server-status', 'error', 'Unhealthy');
+                    logToArea('server-log', `Server status: ${data.status}`);
+                }
+            } catch (error) {
+                updateStatus('server-status', 'error', 'Failed');
+                logToArea('server-log', `Connection failed: ${error.message}`);
+                log(`Server connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Check health endpoint
+        async function checkHealth() {
+            try {
+                const data = await apiRequest('/../health');
+                logToArea('server-log', JSON.stringify(data, null, 2));
+                log('Health check complete', 'success');
+            } catch (error) {
+                logToArea('server-log', `Health check failed: ${error.message}`);
+            }
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            logToArea('ws-log', 'Connecting to WebSocket...');
+            updateStatus('ws-status', 'pending', 'Connecting...');
+            
+            try {
+                socket = io('http://localhost:5006', {
+                    transports: ['websocket', 'polling']
+                });
+                
+                socket.on('connect', () => {
+                    updateStatus('ws-status', 'success', 'Connected');
+                    logToArea('ws-log', `Connected with ID: ${socket.id}`);
+                    log('WebSocket connected', 'success');
+                });
+                
+                socket.on('disconnect', () => {
+                    updateStatus('ws-status', 'error', 'Disconnected');
+                    logToArea('ws-log', 'Disconnected from server');
+                    log('WebSocket disconnected', 'warn');
+                });
+                
+                socket.on('error', (error) => {
+                    logToArea('ws-log', `Error: ${error}`);
+                    log(`WebSocket error: ${error}`, 'error');
+                });
+                
+                // Listen for various events
+                socket.on('agent_communication', (data) => {
+                    logToArea('ws-log', `Agent communication: ${JSON.stringify(data)}`);
+                });
+                
+                socket.on('task_progress', (data) => {
+                    logToArea('ws-log', `Task progress: ${JSON.stringify(data)}`);
+                });
+                
+            } catch (error) {
+                updateStatus('ws-status', 'error', 'Failed');
+                logToArea('ws-log', `Connection failed: ${error.message}`);
+                log(`WebSocket connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                updateStatus('ws-status', 'info', 'Disconnected');
+                logToArea('ws-log', 'Manually disconnected');
+            }
+        }
+
+        // Test agent chat
+        async function testAgentChat() {
+            logToArea('chat-log', 'Testing 1v1 agent chat...');
+            updateStatus('chat-status', 'pending', 'Testing...');
+            
+            try {
+                // Test with Product Agent
+                const response = await apiRequest('/agents/chat/product_01', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        message: 'Hello, this is a test message',
+                        model: 'openai/gpt-4',
+                        enhance_prompt: true
+                    })
+                });
+                
+                if (response.success) {
+                    updateStatus('chat-status', 'success', 'Working');
+                    logToArea('chat-log', `Response: ${response.response.substring(0, 100)}...`);
+                    log('Agent chat test successful', 'success');
+                } else {
+                    throw new Error(response.error || 'Chat failed');
+                }
+            } catch (error) {
+                updateStatus('chat-status', 'error', 'Failed');
+                logToArea('chat-log', `Chat test failed: ${error.message}`);
+                log(`Agent chat failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test chat history
+        async function testChatHistory() {
+            logToArea('chat-log', 'Testing chat history...');
+            
+            try {
+                const response = await apiRequest('/agents/chat_history/product_01');
+                logToArea('chat-log', `History entries: ${response.messages?.length || 0}`);
+                log('Chat history retrieved', 'success');
+            } catch (error) {
+                logToArea('chat-log', `History test failed: ${error.message}`);
+            }
+        }
+
+        // Test multi-agent collaboration
+        async function testMultiAgent() {
+            logToArea('collab-log', 'Testing multi-agent collaboration...');
+            updateStatus('collab-status', 'pending', 'Testing...');
+            
+            try {
+                const response = await apiRequest('/agents/collaborate', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        task_description: 'Test collaboration task',
+                        tagged_agents: ['@product_01', '@coding_01'],
+                        working_directory: '/tmp',
+                        sequential: false,
+                        enhance_prompt: true
+                    })
+                });
+                
+                if (response.success && response.task_id) {
+                    updateStatus('collab-status', 'success', 'Working');
+                    logToArea('collab-log', `Task ID: ${response.task_id}`);
+                    log('Multi-agent collaboration working', 'success');
+                    
+                    // Join WebSocket room for updates
+                    if (socket) {
+                        socket.emit('join_task', { task_id: response.task_id });
+                    }
+                } else {
+                    throw new Error(response.error || 'Collaboration failed');
+                }
+            } catch (error) {
+                updateStatus('collab-status', 'error', 'Failed');
+                logToArea('collab-log', `Collaboration test failed: ${error.message}`);
+                log(`Multi-agent collaboration failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test @mentions
+        async function testMentions() {
+            logToArea('collab-log', 'Testing @mention feature...');
+            
+            try {
+                const response = await apiRequest('/agents/chat/product_01', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        message: 'Can you ask @coding_01 to review this code?',
+                        model: 'openai/gpt-4',
+                        enhance_prompt: true
+                    })
+                });
+                
+                logToArea('collab-log', `Mention test: ${response.success ? 'Success' : 'Failed'}`);
+                if (response.agent_communications) {
+                    logToArea('collab-log', `Agent communications detected: ${response.agent_communications.length}`);
+                }
+            } catch (error) {
+                logToArea('collab-log', `Mention test failed: ${error.message}`);
+            }
+        }
+
+        // Check memory status
+        async function checkMemory() {
+            logToArea('memory-log', 'Checking memory status...');
+            updateStatus('memory-status', 'pending', 'Checking...');
+            
+            try {
+                const response = await apiRequest('/memory/stats');
+                
+                if (response.success) {
+                    const mem = response.system;
+                    updateStatus('memory-status', 'info', `${mem.memory_used_mb}MB`);
+                    logToArea('memory-log', `Memory: ${mem.memory_used_mb}MB (${mem.memory_percent}%)`);
+                    logToArea('memory-log', `Chat Service: ${JSON.stringify(response.chat_service)}`);
+                    log('Memory check complete', 'success');
+                }
+            } catch (error) {
+                updateStatus('memory-status', 'error', 'Failed');
+                logToArea('memory-log', `Memory check failed: ${error.message}`);
+            }
+        }
+
+        // Optimize memory
+        async function optimizeMemory() {
+            logToArea('memory-log', 'Running memory optimization...');
+            
+            try {
+                const response = await apiRequest('/memory/optimize', {
+                    method: 'POST',
+                    body: JSON.stringify({ level: 'normal' })
+                });
+                
+                if (response.success) {
+                    logToArea('memory-log', `Freed ${response.freed_mb}MB`);
+                    log(`Memory optimized: freed ${response.freed_mb}MB`, 'success');
+                }
+            } catch (error) {
+                logToArea('memory-log', `Optimization failed: ${error.message}`);
+            }
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            log('Debug interface loaded', 'info');
+            
+            // Check for API key
+            if (!API_KEY) {
+                log('No API key found. Some features may not work.', 'warn');
+                const key = prompt('Enter API key (or leave empty for unauthenticated access):');
+                if (key) {
+                    localStorage.setItem('swarm_api_key', key);
+                    location.reload();
+                }
+            }
+            
+            // Start with server connection test
+            setTimeout(testServerConnection, 500);
+        });
+
+        // Capture console errors
+        window.addEventListener('error', (event) => {
+            log(`JS Error: ${event.message} at ${event.filename}:${event.lineno}`, 'error');
+        });
+    </script>
+</body>
+</html>

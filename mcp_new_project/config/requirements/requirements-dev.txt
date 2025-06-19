@@ -1,0 +1,37 @@
+# Development Tools
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Code Quality
+black==23.11.0
+flake8==6.1.0
+pylint==3.0.3
+mypy==1.7.1
+isort==5.13.2
+
+# Pre-commit hooks
+pre-commit==3.5.0
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+
+# Debugging
+ipdb==0.13.13
+pdb++==0.10.3
+
+# Performance Profiling
+py-spy==0.3.14
+memory-profiler==0.61.0
+line-profiler==4.1.2
+
+# Testing utilities
+factory-boy==3.3.0
+faker==20.1.0
+responses==0.24.1
+httpretty==1.1.4
+
+# Development server
+watchdog==3.0.0  # File watching for hot reload

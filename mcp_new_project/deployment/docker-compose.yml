@@ -1,0 +1,195 @@
+version: '3.8'
+
+services:
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Convoy: Webhook Gateway
+  # ──────────────────────────────────────────────────────────────────────────────
+  convoy:
+    image: getconvoy/convoy:latest
+    container_name: convoy
+    depends_on:
+      - convoy-db
+      - convoy-redis
+    environment:
+      # PostgreSQL connection for event persistence
+      - DATABASE_URL=postgres://convoy_user:convoy_pass@convoy-db:5432/convoy_db
+      # Redis for caching and queueing
+      - REDIS_URL=redis://convoy-redis:6379/0
+      # HTTP listen address
+      - LISTEN_ADDR=0.0.0.0:8080
+      # Admin console credentials
+      - ADMIN_USERNAME=${CONVOY_ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${CONVOY_ADMIN_PASSWORD:-changeme}
+      # Security settings
+      - JWT_SECRET=${CONVOY_JWT_SECRET:-convoy-jwt-secret-change-in-production}
+      - API_KEY=${CONVOY_API_KEY:-convoy-api-key-change-in-production}
+    ports:
+      - "8080:8080"   # API & dashboard
+      - "8081:8081"   # Metrics/UI (if enabled)
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL: Convoy Event Store
+  # ──────────────────────────────────────────────────────────────────────────────
+  convoy-db:
+    image: postgres:15-alpine
+    container_name: convoy-postgres
+    environment:
+      - POSTGRES_USER=convoy_user
+      - POSTGRES_PASSWORD=convoy_pass
+      - POSTGRES_DB=convoy_db
+    volumes:
+      - convoy_pgdata:/var/lib/postgresql/data
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U convoy_user -d convoy_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Redis: Convoy Queue & Cache
+  # ──────────────────────────────────────────────────────────────────────────────
+  convoy-redis:
+    image: redis:7-alpine
+    container_name: convoy-redis
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - convoy_redisdata:/data
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Flask MCP Executive Platform (includes Email Agent)
+  # ──────────────────────────────────────────────────────────────────────────────
+  mcp-executive:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-executive
+    depends_on:
+      convoy:
+        condition: service_healthy
+      app-db:
+        condition: service_healthy
+    environment:
+      # Flask configuration
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - PORT=5006
+      # Database configuration
+      - DATABASE_URL=postgresql://mcp_user:mcp_pass@app-db:5432/mcp_db
+      # Email Agent configuration
+      - MAILGUN_SIGNING_KEY=${MAILGUN_SIGNING_KEY}
+      - EMAIL_AGENT_LOG_LEVEL=${EMAIL_AGENT_LOG_LEVEL:-INFO}
+      # Convoy integration
+      - CONVOY_API_URL=http://convoy:8080
+      - CONVOY_API_KEY=${CONVOY_API_KEY:-convoy-api-key-change-in-production}
+      # OpenRouter API
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    ports:
+      - "5006:5006"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./instance:/app/instance
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL: Application Database
+  # ──────────────────────────────────────────────────────────────────────────────
+  app-db:
+    image: postgres:15-alpine
+    container_name: mcp-postgres
+    environment:
+      - POSTGRES_USER=mcp_user
+      - POSTGRES_PASSWORD=mcp_pass
+      - POSTGRES_DB=mcp_db
+    volumes:
+      - app_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcp_user -d mcp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Redis: Application Cache & Celery Broker (Optional)
+  # ──────────────────────────────────────────────────────────────────────────────
+  app-redis:
+    image: redis:7-alpine
+    container_name: mcp-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - app_redisdata:/data
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Nginx: Reverse Proxy (Optional)
+  # ──────────────────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
+    depends_on:
+      - mcp-executive
+      - convoy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+volumes:
+  convoy_pgdata:
+    driver: local
+  convoy_redisdata:
+    driver: local
+  app_pgdata:
+    driver: local
+  app_redisdata:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

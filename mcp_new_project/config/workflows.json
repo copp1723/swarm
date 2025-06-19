@@ -1,0 +1,60 @@
+{
+  "templates": [
+    {
+      "id": "code_review",
+      "name": "Code Review Workflow",
+      "description": "Comprehensive code review by multiple agents",
+      "task_description": "Perform a detailed code review of the specified repository, analyzing code quality, architecture, tests, and potential issues.",
+      "tagged_agents": ["product_01", "coder_01", "tester_01", "bug_01"],
+      "sequential": true
+    },
+    {
+      "id": "deployment_setup",
+      "name": "Deployment Setup",
+      "description": "Set up CI/CD and infrastructure",
+      "task_description": "Configure deployment pipelines and infrastructure for the project with proper monitoring and alerting.",
+      "tagged_agents": ["devops_01", "bug_01"],
+      "sequential": true
+    },
+    {
+      "id": "full_stack_development",
+      "name": "Full Stack Development",
+      "description": "Complete development workflow from planning to deployment",
+      "task_description": "Plan, implement, test, and deploy a full-stack application with proper error handling.",
+      "tagged_agents": ["product_01", "coder_01", "tester_01", "bug_01", "devops_01"],
+      "sequential": true
+    },
+    {
+      "id": "incident_response",
+      "name": "Incident Response",
+      "description": "Comprehensive incident investigation and resolution",
+      "task_description": "Investigate the production incident, perform root cause analysis, implement fixes, and create runbooks.",
+      "tagged_agents": ["bug_01", "coder_01", "devops_01"],
+      "sequential": false
+    },
+    {
+      "id": "bug_fix",
+      "name": "Bug Fix Workflow",
+      "description": "Identify, fix, and test bug resolution",
+      "task_description": "Analyze the reported bug, implement a fix, and verify the solution with proper testing.",
+      "tagged_agents": ["bug_01", "coder_01", "tester_01"],
+      "sequential": true
+    },
+    {
+      "id": "product_planning",
+      "name": "Product Planning",
+      "description": "Create product roadmap and user stories",
+      "task_description": "Develop a comprehensive product roadmap with user stories, acceptance criteria, and technical requirements.",
+      "tagged_agents": ["product_01", "coder_01"],
+      "sequential": false
+    },
+    {
+      "id": "documentation",
+      "name": "Documentation Update",
+      "description": "Create or update project documentation",
+      "task_description": "Create comprehensive documentation including product requirements, API references, and deployment guides.",
+      "tagged_agents": ["product_01", "general_01"],
+      "sequential": false
+    }
+  ]
+}

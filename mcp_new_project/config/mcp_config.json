@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/copp1723/Desktop"
+      ],
+      "env": {
+        "MCP_FILESYSTEM_ALLOWED_DIRS": "/Users/copp1723/Desktop",
+        "MCP_FILESYSTEM_RECURSIVE": "true",
+        "MCP_FILESYSTEM_ALLOW_WRITE": "true",
+        "MCP_FILESYSTEM_ALLOW_DELETE": "true",
+        "MCP_FILESYSTEM_ALLOW_CREATE": "true",
+        "MCP_FILESYSTEM_FOLLOW_SYMLINKS": "true"
+      },
+      "description": "Full filesystem access for /Users/copp1723/Desktop with enhanced permissions",
+      "enabled": true
+    },
+    "memory": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp.memory"
+      ],
+      "env": {},
+      "description": "Memory and knowledge storage",
+      "enabled": false
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
+      },
+      "description": "GitHub repository access",
+      "enabled": false
+    }
+  }
+}

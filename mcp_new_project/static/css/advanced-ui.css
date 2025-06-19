@@ -1,0 +1,270 @@
+/* Advanced UI Features CSS */
+
+/* ===== Enhanced Agent Status Indicators ===== */
+.agent-status-container {
+    position: relative;
+}
+
+.agent-status-container .status-indicator {
+    transition: all 0.3s ease;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.agent-status-container .status-indicator.bg-yellow-400 {
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.agent-status-container .status-indicator.bg-green-400 {
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+
+.agent-status-container .status-indicator.bg-red-400 {
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
+}
+
+.agent-nav-item:hover .agent-status-container .status-indicator {
+    transform: scale(1.2);
+}
+
+/* ===== Floating Agent Status Panel ===== */
+#floating-agent-status {
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#floating-agent-status .bg-gray-50 {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+}
+
+/* ===== Progress Dashboard Enhancements ===== */
+.progress-dashboard .bg-gradient-to-r {
+    background: linear-gradient(135deg, #dbeafe 0%, #f3e8ff 100%);
+    border: 1px solid #e5e7eb;
+}
+
+.progress-dashboard #overall-progress-bar {
+    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #6366f1 100%);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.progress-dashboard .agent-status-grid .bg-white {
+    transition: all 0.3s ease;
+    border: 1px solid #e5e7eb;
+}
+
+.progress-dashboard .agent-status-grid .bg-white:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
+}
+
+/* ===== Workflow Visualization Styles ===== */
+.workflow-visualization {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.workflow-visualization .agent-node {
+    position: relative;
+}
+
+.workflow-visualization .agent-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+}
+
+.workflow-visualization .agent-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.workflow-visualization .agent-card.border-yellow-300 {
+    animation: workingPulse 2s infinite;
+}
+
+@keyframes workingPulse {
+    0%, 100% {
+        border-color: #fde047;
+        background-color: #fefce8;
+    }
+    50% {
+        border-color: #facc15;
+        background-color: #fef3c7;
+    }
+}
+
+.workflow-visualization .connection-line {
+    background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 100%);
+}
+
+.workflow-visualization .connection-progress {
+    background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+}
+
+.workflow-visualization .step-number {
+    transition: all 0.3s ease;
+    font-weight: 600;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.workflow-visualization .step-number.bg-blue-500 {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.workflow-visualization .step-number.bg-green-500 {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* ===== Timeline Enhancements ===== */
+.timeline-event {
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 1px solid #f3f4f6;
+}
+
+.timeline-event:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: #e2e8f0;
+    transform: translateX(4px);
+}
+
+.timeline-event.opacity-0 {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.timeline-event.opacity-100 {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===== Enhanced Progress Bars ===== */
+.enhanced-progress-bar {
+    background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 100%);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.enhanced-progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.enhanced-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #6366f1 100%);
+    border-radius: 8px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* ===== Activity Indicators ===== */
+.activity-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #3730a3;
+}
+
+.activity-indicator.working {
+    background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+    border-color: #fbbf24;
+    color: #92400e;
+    animation: workingBreathe 2s infinite;
+}
+
+@keyframes workingBreathe {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.activity-indicator.completed {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: #34d399;
+    color: #065f46;
+}
+
+.activity-indicator.error {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-color: #f87171;
+    color: #991b1b;
+}
+
+/* ===== Responsive Enhancements ===== */
+@media (max-width: 768px) {
+    #floating-agent-status {
+        right: 8px;
+        top: 80px;
+        max-width: calc(100vw - 16px);
+    }
+    
+    .workflow-visualization .agent-flow {
+        flex-direction: column;
+        align-items: center;
+        space-y: 16px;
+    }
+    
+    .workflow-visualization .connection-line {
+        width: 2px;
+        height: 24px;
+        top: -24px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .progress-dashboard .agent-status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Dark Theme Support ===== */
+@media (prefers-color-scheme: dark) {
+    .workflow-visualization {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    }
+    
+    .timeline-event {
+        background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+        border-color: #4b5563;
+        color: #e5e7eb;
+    }
+    
+    .activity-indicator {
+        background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+        border-color: #3b82f6;
+        color: #dbeafe;
+    }
+}
+

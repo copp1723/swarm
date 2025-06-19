@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UI Enhancement Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>UI Enhancement Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>CSS Loading Test</h2>
+        <div id="css-test" class="test-result">Testing...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>JavaScript Loading Test</h2>
+        <div id="js-test" class="test-result">Testing...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Feature Tests</h2>
+        <div id="feature-test" class="test-result">Testing...</div>
+    </div>
+
+    <script>
+        // Test CSS loading
+        function testCSS() {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'css/ui-enhancements.css';
+            link.onload = () => {
+                document.getElementById('css-test').className = 'test-result success';
+                document.getElementById('css-test').textContent = '✓ CSS loaded successfully';
+            };
+            link.onerror = () => {
+                document.getElementById('css-test').className = 'test-result error';
+                document.getElementById('css-test').textContent = '✗ CSS failed to load';
+            };
+            document.head.appendChild(link);
+        }
+
+        // Test JS loading
+        function testJS() {
+            const script = document.createElement('script');
+            script.src = 'js/ui-enhancements/agent-enhancements.js';
+            script.onload = () => {
+                document.getElementById('js-test').className = 'test-result success';
+                document.getElementById('js-test').textContent = '✓ JavaScript loaded successfully';
+                testFeatures();
+            };
+            script.onerror = () => {
+                document.getElementById('js-test').className = 'test-result error';
+                document.getElementById('js-test').textContent = '✗ JavaScript failed to load';
+            };
+            document.body.appendChild(script);
+        }
+
+        // Test features
+        function testFeatures() {
+            const features = [];
+            
+            // Check if AgentUIEnhancements class exists
+            if (window.agentUIEnhancements) {
+                features.push('✓ AgentUIEnhancements initialized');
+            } else {
+                features.push('✗ AgentUIEnhancements not found');
+            }
+            
+            // Check if agent profiles are loaded
+            if (window.agentUIEnhancements && window.agentUIEnhancements.agentProfiles) {
+                const agentCount = Object.keys(window.agentUIEnhancements.agentProfiles).length;
+                features.push(`✓ ${agentCount} agent profiles loaded`);
+            }
+            
+            // Check if CSS variables are defined
+            const root = document.documentElement;
+            const cssVarTest = getComputedStyle(root).getPropertyValue('--product-agent');
+            if (cssVarTest) {
+                features.push('✓ CSS variables defined');
+            }
+            
+            const featureDiv = document.getElementById('feature-test');
+            featureDiv.className = features.every(f => f.startsWith('✓')) ? 'test-result success' : 'test-result error';
+            featureDiv.innerHTML = features.join('<br>');
+        }
+
+        // Run tests
+        testCSS();
+        testJS();
+    </script>
+</body>
+</html>

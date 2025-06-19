@@ -1,0 +1,422 @@
+name: Documentation Quality Check
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'openapi.yaml'
+      - '.github/workflows/documentation.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'openapi.yaml'
+
+jobs:
+  documentation-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install documentation dependencies
+      run: |
+        pip install PyYAML pydantic requests pytest markdown
+    
+    - name: Validate OpenAPI Specification
+      run: |
+        python -c "
+        import yaml
+        with open('openapi.yaml', 'r') as f:
+            spec = yaml.safe_load(f)
+        
+        # Basic validation
+        required_fields = ['openapi', 'info', 'paths', 'components']
+        for field in required_fields:
+            assert field in spec, f'Missing required field: {field}'
+        
+        # Check version format
+        version = spec['info']['version']
+        parts = version.split('.')
+        assert len(parts) == 3, f'Invalid version format: {version}'
+        assert all(p.isdigit() for p in parts), f'Invalid version: {version}'
+        
+        print(f'✅ OpenAPI specification is valid (version {version})')
+        "
+    
+    - name: Test markdown syntax
+      run: |
+        python -c "
+        import re
+        from pathlib import Path
+        
+        errors = []
+        doc_files = list(Path('.').glob('docs/**/*.md'))
+        doc_files.extend([Path('README.md'), Path('CHANGELOG.md')])
+        
+        for doc_file in doc_files:
+            if not doc_file.exists():
+                continue
+            
+            try:
+                content = doc_file.read_text(encoding='utf-8')
+                
+                # Check for unmatched code blocks
+                if content.count('\`\`\`') % 2 != 0:
+                    errors.append(f'{doc_file}: Unmatched code blocks')
+                
+                # Check for broken internal links
+                links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
+                for link_text, link_url in links:
+                    if link_url.startswith('./') or link_url.startswith('../'):
+                        target = doc_file.parent / link_url
+                        if not target.exists():
+                            errors.append(f'{doc_file}: Broken link to {link_url}')
+                            
+            except Exception as e:
+                errors.append(f'{doc_file}: {e}')
+        
+        if errors:
+            print('❌ Documentation syntax errors:')
+            for error in errors:
+                print(f'  {error}')
+            exit(1)
+        else:
+            print('✅ Documentation syntax is valid')
+        "
+    
+    - name: Test code examples
+      run: |
+        python -c "
+        import ast
+        import re
+        from pathlib import Path
+        
+        errors = []
+        doc_files = list(Path('.').glob('docs/**/*.md'))
+        doc_files.append(Path('README.md'))
+        
+        for doc_file in doc_files:
+            if not doc_file.exists():
+                continue
+                
+            try:
+                content = doc_file.read_text()
+                
+                # Extract Python code blocks
+                python_blocks = re.findall(r'\`\`\`python\n(.*?)\`\`\`', content, re.DOTALL)
+                
+                for i, block in enumerate(python_blocks):
+                    try:
+                        # Skip blocks with obvious placeholders
+                        if '...' in block or 'your-api-key' in block or 'example.com' in block:
+                            continue
+                        
+                        # Try to parse the Python code
+                        ast.parse(block)
+                    except SyntaxError as e:
+                        errors.append(f'{doc_file}:python-block-{i}: {e}')
+                        
+            except Exception as e:
+                errors.append(f'{doc_file}: {e}')
+        
+        if errors:
+            print('❌ Code example errors:')
+            for error in errors[:10]:  # Limit output
+                print(f'  {error}')
+            if len(errors) > 10:
+                print(f'  ... and {len(errors) - 10} more errors')
+            exit(1)
+        else:
+            print('✅ Code examples are syntactically valid')
+        "
+    
+    - name: Check documentation completeness
+      run: |
+        python -c "
+        from pathlib import Path
+        import json
+        
+        # Generate documentation metrics
+        report = {
+            'total_docs': 0,
+            'total_size': 0,
+            'files': {}
+        }
+        
+        # Count documentation files
+        doc_patterns = ['docs/**/*.md', 'README.md', 'CHANGELOG.md']
+        for pattern in doc_patterns:
+            for doc_file in Path('.').glob(pattern):
+                if doc_file.exists():
+                    size = doc_file.stat().st_size
+                    report['total_docs'] += 1
+                    report['total_size'] += size
+                    report['files'][str(doc_file)] = {
+                        'size': size,
+                        'lines': len(doc_file.read_text().splitlines())
+                    }
+        
+        print(f'📄 Total documentation files: {report[\"total_docs\"]}')
+        print(f'📏 Total documentation size: {report[\"total_size\"]:,} bytes')
+        if report['total_docs'] > 0:
+            print(f'📋 Average file size: {report[\"total_size\"] // report[\"total_docs\"]:,} bytes')
+        
+        # Check minimum documentation requirements
+        required_docs = [
+            'README.md',
+            'CHANGELOG.md',
+            'docs/api/README.md',
+            'docs/architecture.md',
+            'docs/nlu-orchestration.md',
+            'docs/plugin-development.md'
+        ]
+        
+        missing = []
+        for doc in required_docs:
+            if not Path(doc).exists():
+                missing.append(doc)
+        
+        if missing:
+            print(f'❌ Missing required documentation: {missing}')
+            exit(1)
+        else:
+            print('✅ All required documentation exists')
+        "
+    
+    - name: Validate changelog format
+      run: |
+        python -c "
+        import re
+        from pathlib import Path
+        
+        changelog = Path('CHANGELOG.md').read_text()
+        
+        # Check for required sections
+        required_sections = ['Unreleased', 'Added', 'Changed', 'Fixed']
+        missing_sections = [s for s in required_sections if s not in changelog]
+        
+        if missing_sections:
+            print(f'❌ Missing changelog sections: {missing_sections}')
+            exit(1)
+        
+        # Check version format
+        version_pattern = r'## \[(\d+\.\d+\.\d+)\]'
+        versions = re.findall(version_pattern, changelog)
+        
+        for version in versions:
+            parts = version.split('.')
+            if len(parts) != 3 or not all(p.isdigit() for p in parts):
+                print(f'❌ Invalid version format: {version}')
+                exit(1)
+        
+        print(f'✅ Changelog format is valid ({len(versions)} versions found)')
+        "
+    
+    - name: Check for TODO/FIXME in docs
+      run: |
+        python -c "
+        from pathlib import Path
+        import re
+        
+        todos = []
+        doc_files = list(Path('.').glob('docs/**/*.md'))
+        doc_files.extend([Path('README.md'), Path('CHANGELOG.md')])
+        
+        for doc_file in doc_files:
+            if not doc_file.exists():
+                continue
+                
+            content = doc_file.read_text()
+            
+            # Find TODO/FIXME comments
+            pattern = r'(TODO|FIXME|XXX).*'
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            
+            if matches:
+                todos.extend([f'{doc_file}: {match}' for match in matches])
+        
+        if todos:
+            print('⚠️  Found TODO/FIXME items in documentation:')
+            for todo in todos[:5]:  # Limit output
+                print(f'  {todo}')
+            if len(todos) > 5:
+                print(f'  ... and {len(todos) - 5} more items')
+        else:
+            print('✅ No TODO/FIXME items found in documentation')
+        "
+
+  link-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check external links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'yes'
+        config-file: '.github/markdown-link-check-config.json'
+        folder-path: 'docs'
+        
+    - name: Check README links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        file-path: './README.md'
+
+  api-docs-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install openapi-spec-validator
+    
+    - name: Validate OpenAPI with spec validator
+      run: |
+        python -c "
+        from openapi_spec_validator import validate_spec
+        from openapi_spec_validator.readers import read_from_filename
+        
+        try:
+            spec_dict, spec_url = read_from_filename('openapi.yaml')
+            validate_spec(spec_dict)
+            print('✅ OpenAPI specification is valid')
+        except Exception as e:
+            print(f'❌ OpenAPI validation failed: {e}')
+            exit(1)
+        "
+    
+    - name: Check API endpoints coverage
+      run: |
+        python -c "
+        import yaml
+        import re
+        from pathlib import Path
+        
+        # Load OpenAPI spec
+        with open('openapi.yaml', 'r') as f:
+            spec = yaml.safe_load(f)
+        
+        # Extract documented endpoints
+        documented = set()
+        for path, methods in spec['paths'].items():
+            for method in methods.keys():
+                if method.upper() in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']:
+                    documented.add(f'{method.upper()} {path}')
+        
+        # Find routes in code
+        actual_routes = set()
+        for py_file in Path('.').rglob('*.py'):
+            if 'test' in str(py_file) or '__pycache__' in str(py_file):
+                continue
+                
+            try:
+                content = py_file.read_text()
+                route_pattern = r'@(?:\w+\.)?route\([\"\']/api([^\"\']*)[\"\']\)'
+                matches = re.findall(route_pattern, content)
+                for match in matches:
+                    actual_routes.add(f'GET {match}')  # Simplified
+            except:
+                pass
+        
+        print(f'📊 Documented endpoints: {len(documented)}')
+        print(f'📊 Found routes in code: {len(actual_routes)}')
+        
+        # This is a basic check - could be enhanced
+        if len(documented) < 10:
+            print('⚠️  Consider documenting more endpoints')
+        else:
+            print('✅ Good API documentation coverage')
+        "
+
+  doc-generation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Generate documentation report
+      run: |
+        python -c "
+        import json
+        from pathlib import Path
+        from datetime import datetime
+        
+        # Generate comprehensive documentation report
+        report = {
+            'generated_at': datetime.now().isoformat(),
+            'total_docs': 0,
+            'total_size': 0,
+            'coverage': {},
+            'metrics': {}
+        }
+        
+        # Count all documentation
+        for doc_file in Path('.').glob('**/*.md'):
+            if '.git' in str(doc_file):
+                continue
+            size = doc_file.stat().st_size
+            report['total_docs'] += 1
+            report['total_size'] += size
+            
+            # Categorize
+            if 'docs/' in str(doc_file):
+                category = str(doc_file).split('/')[1] if '/' in str(doc_file) else 'root'
+            else:
+                category = 'root'
+            
+            if category not in report['coverage']:
+                report['coverage'][category] = {'files': 0, 'size': 0}
+            
+            report['coverage'][category]['files'] += 1
+            report['coverage'][category]['size'] += size
+        
+        # Calculate metrics
+        if report['total_docs'] > 0:
+            report['metrics']['avg_file_size'] = report['total_size'] // report['total_docs']
+            report['metrics']['docs_per_category'] = len(report['coverage'])
+        
+        # Save report
+        Path('docs').mkdir(exist_ok=True)
+        with open('docs/documentation-metrics.json', 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        print(f'📊 Generated documentation report: {report[\"total_docs\"]} files, {report[\"total_size\"]:,} bytes')
+        "
+    
+    - name: Commit documentation report
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/documentation-metrics.json
+        git diff --staged --quiet || git commit -m "Update documentation metrics [skip ci]"
+        git push
