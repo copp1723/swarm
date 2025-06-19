@@ -55,6 +55,6 @@ services:
 
 databases:
   - name: swarm-db
-    plan: starter  # Upgrade for production
+    plan: free  # Free tier for development, upgrade to standard for production
     postgresMajorVersion: 15
 
