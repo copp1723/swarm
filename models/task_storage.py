@@ -189,12 +189,14 @@ class ConversationHistory(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # Additional context
-    metadata = Column(JSON, default=dict)
+    conversation_metadata = Column(JSON, default=dict)
     
     def __init__(self, **kwargs):
         """Initialize with auto-generated conversation ID"""
         if 'conversation_id' not in kwargs:
             kwargs['conversation_id'] = f"conv_{uuid.uuid4().hex[:8]}"
+        if 'metadata' in kwargs:
+            kwargs['conversation_metadata'] = kwargs.pop('metadata')
         super().__init__(**kwargs)
     
     def to_dict(self):
@@ -212,7 +214,7 @@ class ConversationHistory(db.Model):
             'tokens_used': self.tokens_used,
             'response_time_ms': self.response_time_ms,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'metadata': self.metadata
+            'metadata': self.conversation_metadata
         }
 
 
