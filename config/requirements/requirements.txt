@@ -55,7 +55,7 @@ tenacity==8.2.3
 
 # Observability & Monitoring
 loguru==0.7.2
-# sentry-sdk[flask,celery]==1.39.1  # Commented out - imported but not configured
+sentry-sdk[flask,celery]==1.39.1  # For error tracking and monitoring
 
 # Security Enhancements
 python-jose[cryptography]==3.3.0  # For JWT handling
