@@ -1,21 +1,33 @@
 #!/bin/bash
+# Start script with better error handling and logging
 
-echo "Starting MCP Agent Server..."
-echo "=========================="
+cd /Users/copp1723/Desktop/swarm/mcp_new_project
 
-# Activate virtual environment if it exists
-if [ -f "venv/bin/activate" ]; then
-    echo "Activating virtual environment..."
-    source venv/bin/activate
+# Kill any existing processes on port 5006
+lsof -ti:5006 | xargs kill -9 2>/dev/null
+
+# Export environment variables
+export FLASK_APP=app.py
+export FLASK_ENV=development
+export FLASK_DEBUG=1
+export PORT=5006
+
+# Ensure virtual environment exists
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
 fi
 
-# Start the Flask server
-echo "Starting Flask application..."
-python app.py
+# Activate virtual environment
+source venv/bin/activate
 
-# Note: If you need to run background services, uncomment these:
-# echo "Starting Celery worker in background..."
-# celery -A tasks.celery_app worker --loglevel=info &
-# 
-# echo "Starting Redis server..."
-# redis-server &
+# Install dependencies
+echo "Installing dependencies..."
+pip install -r requirements.txt
+
+# Create log directory
+mkdir -p logs
+
+# Start the server with proper logging
+echo "Starting server on port $PORT..."
+python app.py 2>&1 | tee logs/server_startup.log
