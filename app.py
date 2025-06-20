@@ -7,6 +7,7 @@ Streamlined app with modular architecture and dependency injection
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Add Homebrew path for npx/node
@@ -174,6 +175,7 @@ def index():
 def ping():
     """Simple ping endpoint for connectivity tests"""
     return "pong", 200
+
 
 # Service lifecycle manager
 lifecycle_manager = ServiceLifecycleManager()
@@ -457,25 +459,46 @@ def after_request(response):
 
     return response
 
-if __name__ == '__main__':
-    # Run startup validation
-    logger.info("Running startup validation...")
-    if not validate_startup(exit_on_error=False):
-        logger.warning("Startup validation had warnings/errors, continuing anyway...")
-    
-    # Initialize databases
-    with app.app_context():
-        initialize_databases(app)
-        logger.info("All databases initialized successfully")
+# Initialize app in production or development mode
+def initialize_app():
+    """Initialize the app with error handling for production deployment"""
+    try:
+        # Run startup validation
+        logger.info("Running startup validation...")
+        if not validate_startup(exit_on_error=False):
+            logger.warning("Startup validation had warnings/errors, continuing anyway...")
         
-        # Initialize session management
-        init_session_management(app)
-        logger.info("Database session management initialized")
-    
-    # Initialize all application services
-    initialize_application_services()
+        # Initialize databases with error handling
+        try:
+            with app.app_context():
+                initialize_databases(app)
+                logger.info("All databases initialized successfully")
+                
+                # Initialize session management
+                init_session_management(app)
+                logger.info("Database session management initialized")
+        except Exception as e:
+            logger.error(f"Database initialization failed: {e}")
+            # Continue without database for basic functionality
+        
+        # Initialize all application services with error handling
+        try:
+            initialize_application_services()
+            logger.info("Application services initialized")
+        except Exception as e:
+            logger.error(f"Service initialization failed: {e}")
+            # Continue without advanced services for basic functionality
+            
+    except Exception as e:
+        logger.error(f"App initialization failed: {e}")
+        # Continue - basic Flask routes should still work
 
+# Initialize the app when imported (for production servers like gunicorn)
+initialize_app()
+
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5006))
+    debug_mode = os.environ.get('FLASK_ENV', 'production').lower() != 'production'
     
     # Use SocketIO run method instead of Flask run for WebSocket support
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode)
