@@ -160,6 +160,21 @@ app.register_blueprint(audit_bp)
 # Register Email Agent
 register_email_agent(app)
 
+# Add a simple root route for health checks
+@app.route('/')
+def index():
+    """Simple root route that serves the main interface"""
+    try:
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        logger.error(f"Failed to serve index.html: {e}")
+        return f"MCP Executive - Service is running. Error: {str(e)}", 200
+
+@app.route('/ping')
+def ping():
+    """Simple ping endpoint for connectivity tests"""
+    return "pong", 200
+
 # Service lifecycle manager
 lifecycle_manager = ServiceLifecycleManager()
 
@@ -323,10 +338,7 @@ def task_demo():
     """Serve the task management demo page"""
     return app.send_static_file('task_demo.html')
 
-@app.route('/')
-def serve_index():
-    """Serve the main multi-agent interface"""
-    return app.send_static_file('index.html')
+# This route is already defined above as index()
 
 @app.route('/<path:filename>')
 def static_files(filename):

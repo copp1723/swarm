@@ -30,7 +30,7 @@ services:
       - key: SENTRY_DSN
         sync: false # Set in dashboard
     autoDeploy: false
-    healthCheckPath: /api/monitoring/health
+    healthCheckPath: /api/monitoring/simple-health
 
   # Background Worker
   - type: worker

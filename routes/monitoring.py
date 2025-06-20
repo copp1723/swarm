@@ -119,6 +119,26 @@ def liveness():
     }), 200
 
 
+@monitoring_bp.route('/simple-health', methods=['GET'])
+def simple_health():
+    """
+    Simple health check without external dependencies for deployment
+    """
+    try:
+        return jsonify({
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "mcp-executive",
+            "version": "1.0.0"
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }), 500
+
+
 @monitoring_bp.route('/services', methods=['GET'])
 def service_status():
     """Get detailed service status for debugging dependency injection issues"""
