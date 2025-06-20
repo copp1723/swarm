@@ -1,27 +1,51 @@
+// @ts-check
 // Chat Interface Component
 import { AgentAPI } from '../services/api.js';
 import { StorageService } from '../services/storage.js';
 import { DirectoryBrowser } from './directory-browser.js';
 import { createElement, escapeHtml, showNotification, updateIcons } from '../utils/dom-helpers.js';
 import { formatAgentResponse } from '../utils/formatters.js';
-import { getAgentById, getAgentColor, AGENTS } from '../agents/agent-config.js';
+import { getAgentById, getAgentColor, getAgentBadgeClasses, AGENTS } from '../agents/agent-config.js';
 import { startGroupChat } from './group-chat.js';
 
+/**
+ * Chat interface component for individual agent interactions
+ * Handles message sending, file uploads, directory selection, and chat history
+ */
 export class ChatInterface {
+    /**
+     * @param {string} agentId - The unique identifier for the agent
+     */
     constructor(agentId) {
+        /** @type {string} */
         this.agentId = agentId;
+        /** @type {any} */
         this.agent = getAgentById(agentId);
+        /** @type {AgentAPI} */
         this.api = new AgentAPI();
+        /** @type {StorageService} */
         this.storage = new StorageService();
+        /** @type {DirectoryBrowser} */
         this.directoryBrowser = new DirectoryBrowser();
+        /** @type {HTMLElement|null} */
         this.container = null;
+        /** @type {HTMLElement|null} */
         this.chatArea = null;
+        /** @type {HTMLInputElement|null} */
         this.input = null;
+        /** @type {HTMLSelectElement|null} */
         this.modelSelector = null;
+        /** @type {boolean} */
         this.isActive = false;
+        /** @type {string|null} */
         this.workingDirectory = this.storage.getAgentDirectory(agentId);
     }
 
+    /**
+     * Render the chat interface and return the DOM element
+     * Sets up the complete UI structure including header, chat area, and input controls
+     * @returns {HTMLElement} The rendered chat container element
+     */
     render() {
         this.container = createElement('div', 'agent-chat-container');
         this.container.id = `chat-container-${this.agentId}`;
@@ -35,7 +59,7 @@ export class ChatInterface {
                             <div class="flex items-center space-x-3">
                                 <div class="status-indicator w-3 h-3 rounded-full bg-gray-400"></div>
                                 <h2 class="text-xl font-semibold text-gray-900">${this.agent.name}</h2>
-                                <span class="px-3 py-1 text-xs font-medium bg-${this.agent.color}-100 text-${this.agent.color}-700 rounded-full">
+                                <span class="agent-badge ${getAgentBadgeClasses(this.agent.color)}">
                                     ${this.agent.id.split('_')[0].toUpperCase()}
                                 </span>
                             </div>
@@ -123,12 +147,21 @@ export class ChatInterface {
         return this.container;
     }
 
+    /**
+     * Set up references to DOM elements after render
+     * @private
+     */
     setupElements() {
         this.chatArea = document.getElementById(`chat-${this.agentId}`);
         this.input = document.getElementById(`input-${this.agentId}`);
         this.modelSelector = document.getElementById(`model-${this.agentId}`);
     }
 
+    /**
+     * Attach all event listeners for the chat interface
+     * Handles input events, file uploads, chat actions, and model selection
+     * @private
+     */
     attachEventListeners() {
         // Send message
         this.input.addEventListener('keypress', (e) => {
@@ -155,6 +188,11 @@ export class ChatInterface {
         });
     }
 
+    /**
+     * Send a message to the agent or initiate group chat if mentions are detected
+     * Handles @mentions for multi-agent collaboration
+     * @returns {Promise<void>}
+     */
     async sendMessage() {
         let message = this.input.value.trim();
         if (!message) return;
@@ -441,3 +479,4 @@ export class ChatInterface {
         this.isActive = false;
     }
 }
+//# sourceMappingURL=chat-interface.js.map
