@@ -32,9 +32,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DISABLE_MCP_FILESYSTEM
-        value: "true"  # Disable MCP filesystem server if npx is not available
+        value: "false"  # Enable MCP filesystem server for full functionality
     autoDeploy: false
-    healthCheckPath: /api/monitoring/simple-health
+    healthCheckPath: /api/monitoring/ready
 
   # Background Worker
   - type: worker

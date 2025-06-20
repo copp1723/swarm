@@ -67,9 +67,9 @@ ENV PYTHONUNBUFFERED=1 \
 # Expose port (Render will assign the actual port via PORT env var)
 EXPOSE $PORT
 
-# Health check - use PORT env var for dynamic port
+# Health check - use PORT env var for dynamic port (matches render.yaml)
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
+    CMD curl -f http://localhost:${PORT:-10000}/api/monitoring/ready || exit 1
 
 # Run the application with the startup script
 CMD ["./scripts/render_start.sh"]
