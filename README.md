@@ -313,6 +313,132 @@ mcp_new_project/
 - **[Agent Reference](./docs/agents/README.md)** - Detailed guide to each agent
 - **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
 
+## 🔧 Troubleshooting UI
+
+### Common UI Issues and Solutions
+
+#### WebSocket Connection Problems
+```bash
+# Check if WebSocket is connecting
+# Open browser DevTools → Console and look for:
+✅ WebSocket connected successfully
+❌ WebSocket connection error: Failed to connect
+
+# Manual reconnection if needed
+# In browser console:
+window.app.getWebSocketService().reconnect();
+```
+
+#### Module Loading Errors
+```bash
+# Check for ES6 module compatibility issues
+# Common errors in DevTools Console:
+- "Failed to resolve module specifier"
+- "Unexpected token 'export'"
+- "Cannot use import statement outside a module"
+
+# Solution: Ensure scripts are loaded with type="module"
+# Check network tab for 404 errors on .js files
+```
+
+#### Chat Interface Issues
+```bash
+# If agents don't respond or interface is broken:
+
+1. Check API configuration:
+curl http://localhost:5006/api/agents/list
+
+2. Verify provider status:
+curl http://localhost:5006/api/providers/status
+
+3. Check browser console for errors:
+- "API key required for chat functionality"
+- "Authentication failed"
+- "Failed to load agents"
+
+4. Clear localStorage and refresh:
+localStorage.clear();
+location.reload();
+```
+
+#### Source Map Debugging
+```bash
+# Enable source maps for better debugging:
+# 1. Open DevTools → Sources tab
+# 2. Verify .js.map files are loading
+# 3. Set breakpoints in original source code
+
+# Generate source maps if missing:
+python scripts/generate_sourcemaps.py
+```
+
+#### Performance Issues
+```bash
+# Monitor WebSocket health:
+window.app.getWebSocketService().getConnectionStatus();
+
+# Check API health:
+window.app.getWebSocketService().checkApiHealth();
+
+# Clear chat history to reduce memory:
+# Use the trash icon in each agent's chat interface
+```
+
+#### Interface Switching Issues
+```bash
+# Switch between Unified and Classic interfaces:
+localStorage.setItem('mcp_interface_preference', 'unified');
+# or
+localStorage.setItem('mcp_interface_preference', 'classic');
+location.reload();
+
+# Force unified workspace:
+window.location.href = '/?workspace=unified';
+```
+
+#### Debugging Guide
+
+1. **Enable Verbose Logging**:
+   ```javascript
+   // In browser console:
+   localStorage.setItem('debug', 'true');
+   ```
+
+2. **Check Network Requests**:
+   - Open DevTools → Network tab
+   - Look for failed requests (red entries)
+   - Check API endpoint responses
+
+3. **Browser Compatibility**:
+   - Chrome/Edge: Full ES6 module support
+   - Firefox: Full support with latest version
+   - Safari: Requires recent version for full compatibility
+
+4. **Resource Loading Issues**:
+   ```bash
+   # Check static file serving:
+   curl http://localhost:5006/static/js/app.js
+   curl http://localhost:5006/static/css/main.css
+   ```
+
+5. **API Key Configuration**:
+   - Ensure `.env` file contains `OPENROUTER_API_KEY`
+   - Use the API key setup modal in the UI
+   - Check provider configuration endpoints
+
+### Advanced Debugging
+
+For detailed UI debugging, see: [`docs/debug/ui-audit.md`](./docs/debug/ui-audit.md)
+
+#### TypeScript Type Checking
+Critical UI modules include `@ts-check` for enhanced debugging:
+- `static/js/app-unified.js`
+- `static/js/components/chat-interface.js`
+- `static/js/services/websocket.js`
+- `static/js/services/api-client.js`
+
+Use TypeScript-aware IDEs (VS Code, WebStorm) for better error detection.
+
 ## 🧪 Testing
 
 ```bash

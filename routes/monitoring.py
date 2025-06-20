@@ -119,6 +119,36 @@ def liveness():
     }), 200
 
 
+@monitoring_bp.route('/services', methods=['GET'])
+def service_status():
+    """Get detailed service status for debugging dependency injection issues"""
+    try:
+        from core.service_registry import get_service_status, validate_critical_services
+        
+        # Get overall service status
+        status = get_service_status()
+        
+        # Get critical service validation
+        critical_status = validate_critical_services()
+        
+        # Add health information
+        overall_health = all(critical_status.values())
+        
+        return jsonify({
+            'overall_health': overall_health,
+            'critical_services': critical_status,
+            'service_details': status,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Failed to get service status: {e}")
+        return jsonify({
+            'error': str(e),
+            'overall_health': False,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 500
+
+
 def check_database():
     """Check database connectivity"""
     try:

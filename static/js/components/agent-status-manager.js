@@ -2,14 +2,18 @@
 import { createElement, updateIcons } from '../utils/dom-helpers.js';
 
 export class AgentStatusManager {
-    constructor() {
+    constructor(wsService = null) {
         this.agentStates = new Map();
         this.statusUpdateCallbacks = new Map();
+        this.wsService = wsService;
+        this.isSubscribedToWebSocket = false;
     }
 
     init() {
         this.setupGlobalAgentIndicators();
         this.setupStatusObserver();
+        this.setupWebSocketSubscriptions();
+        this.setupChatHeaderEnhancements();
     }
 
     setupGlobalAgentIndicators() {
@@ -109,6 +113,17 @@ export class AgentStatusManager {
         
         // Update floating panel
         this.updateFloatingPanel();
+        
+        // Update nav dots if AgentUIEnhancements is available
+        if (window.agentUIEnhancements) {
+            const statusMapping = {
+                'idle': 'idle',
+                'working': 'working', 
+                'completed': 'completed',
+                'error': 'failed'
+            };
+            window.agentUIEnhancements.updateNavDotStatus(agentId, statusMapping[status] || 'idle');
+        }
         
         // Trigger callbacks
         const callbacks = this.statusUpdateCallbacks.get(agentId) || [];
@@ -331,5 +346,216 @@ export class AgentStatusManager {
             }
         }, duration / 10);
     }
+
+    // WebSocket subscription methods
+    setupWebSocketSubscriptions() {
+        if (!this.wsService || this.isSubscribedToWebSocket) {
+            return;
+        }
+
+        console.log('Setting up WebSocket subscriptions for AgentStatusManager');
+
+        // Subscribe to agent communication events
+        this.wsService.on('agent_communication', (data) => {
+            console.log('AgentStatusManager received agent_communication:', data);
+            const agentId = data.from_agent || data.agent_id || data.communication?.from_agent;
+            if (agentId) {
+                this.updateAgentStatus(agentId, 'working', 'Communicating...');
+                this.showChatHeaderSpinner(agentId, true);
+            }
+        });
+
+        // Subscribe to task progress events
+        this.wsService.on('task_progress', (data) => {
+            console.log('AgentStatusManager received task_progress:', data);
+            
+            // Update individual agent statuses if provided
+            if (data.agent_statuses) {
+                Object.entries(data.agent_statuses).forEach(([agentId, status]) => {
+                    this.updateAgentStatus(
+                        agentId,
+                        status.status || 'working',
+                        status.activity || 'Processing...',
+                        status.progress
+                    );
+                    
+                    // Show spinner for working agents
+                    if (status.status === 'working') {
+                        this.showChatHeaderSpinner(agentId, true);
+                    }
+                });
+            }
+            
+            // Generic task progress handler
+            if (data.agent_id) {
+                this.updateAgentStatus(data.agent_id, 'working', data.message || 'Processing task...');
+                this.showChatHeaderSpinner(data.agent_id, true);
+            }
+        });
+
+        // Subscribe to task completion events
+        this.wsService.on('task_complete', (data) => {
+            console.log('AgentStatusManager received task_complete:', data);
+            
+            // Mark specific agent as completed if provided
+            if (data.agent_id) {
+                this.updateAgentStatus(data.agent_id, 'completed', 'Task completed');
+                this.showChatHeaderSpinner(data.agent_id, false);
+            } else {
+                // Mark all working agents as completed
+                const allStatuses = this.getAllAgentStatuses();
+                Object.keys(allStatuses).forEach(agentId => {
+                    if (allStatuses[agentId].status === 'working') {
+                        this.updateAgentStatus(agentId, 'completed', 'Task completed');
+                        this.showChatHeaderSpinner(agentId, false);
+                    }
+                });
+            }
+        });
+
+        // Subscribe to task error events
+        this.wsService.on('task_error', (data) => {
+            console.log('AgentStatusManager received task_error:', data);
+            
+            // Mark specific agent as error if provided
+            if (data.agent_id) {
+                this.updateAgentStatus(data.agent_id, 'error', data.message || 'Error occurred');
+                this.showChatHeaderSpinner(data.agent_id, false);
+            } else {
+                // Mark all working agents as error
+                const allStatuses = this.getAllAgentStatuses();
+                Object.keys(allStatuses).forEach(agentId => {
+                    if (allStatuses[agentId].status === 'working') {
+                        this.updateAgentStatus(agentId, 'error', 'Task failed');
+                        this.showChatHeaderSpinner(agentId, false);
+                    }
+                });
+            }
+        });
+
+        this.isSubscribedToWebSocket = true;
+    }
+
+    // Set WebSocket service (for late initialization)
+    setWebSocketService(wsService) {
+        this.wsService = wsService;
+        if (!this.isSubscribedToWebSocket) {
+            this.setupWebSocketSubscriptions();
+        }
+    }
+
+    // Chat header enhancements
+    setupChatHeaderEnhancements() {
+        // Add loading spinners to all agent chat headers
+        document.querySelectorAll('.agent-window').forEach(agentWindow => {
+            const agentId = this.extractAgentIdFromWindow(agentWindow);
+            if (agentId) {
+                this.addChatHeaderSpinner(agentWindow, agentId);
+            }
+        });
+
+        // Observe for new agent windows
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if it's an agent window
+                        if (node.classList?.contains('agent-window')) {
+                            const agentId = this.extractAgentIdFromWindow(node);
+                            if (agentId) {
+                                this.addChatHeaderSpinner(node, agentId);
+                            }
+                        }
+                        
+                        // Check for agent windows in added subtrees
+                        const agentWindows = node.querySelectorAll?.('.agent-window');
+                        agentWindows?.forEach(agentWindow => {
+                            const agentId = this.extractAgentIdFromWindow(agentWindow);
+                            if (agentId) {
+                                this.addChatHeaderSpinner(agentWindow, agentId);
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    addChatHeaderSpinner(agentWindow, agentId) {
+        const header = agentWindow.querySelector('.agent-header, .chat-header, .group-chat-header');
+        if (!header || header.querySelector('.chat-loading-spinner')) {
+            return; // Spinner already exists
+        }
+
+        // Create spinner element
+        const spinner = createElement('div', 'chat-loading-spinner hidden');
+        spinner.id = `chat-spinner-${agentId}`;
+        spinner.innerHTML = `
+            <div class="flex items-center space-x-2 text-blue-600">
+                <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                <span class="text-xs font-medium">Responding...</span>
+            </div>
+        `;
+        
+        spinner.style.cssText = `
+            position: absolute;
+            top: 50%;
+            right: 60px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        `;
+
+        // Ensure header has relative positioning
+        if (getComputedStyle(header).position === 'static') {
+            header.style.position = 'relative';
+        }
+
+        header.appendChild(spinner);
+    }
+
+    showChatHeaderSpinner(agentId, show) {
+        const spinner = document.getElementById(`chat-spinner-${agentId}`);
+        if (spinner) {
+            if (show) {
+                spinner.classList.remove('hidden');
+                spinner.classList.add('flex');
+            } else {
+                spinner.classList.add('hidden');
+                spinner.classList.remove('flex');
+            }
+        }
+    }
+
+    extractAgentIdFromWindow(agentWindow) {
+        // Try to extract agent ID from window ID
+        if (agentWindow.id && agentWindow.id.startsWith('agent-window-')) {
+            return agentWindow.id.replace('agent-window-', '');
+        }
+        
+        // Try data attribute
+        if (agentWindow.dataset.agentId) {
+            return agentWindow.dataset.agentId;
+        }
+        
+        // Try to find in child elements
+        const titleElement = agentWindow.querySelector('.agent-title');
+        if (titleElement && titleElement.dataset.agentId) {
+            return titleElement.dataset.agentId;
+        }
+        
+        return null;
+    }
 }
 
+
+//# sourceMappingURL=agent-status-manager.js.map

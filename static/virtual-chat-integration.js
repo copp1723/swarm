@@ -171,12 +171,14 @@ class VirtualChatManager {
                     
                     try {
                         const enhancePrompt = document.getElementById('enhance-prompt-global')?.checked || false;
-                        const response = await fetch(`/api/agents/chat/${agentId}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ message, model, enhance_prompt: enhancePrompt })
+                        
+                        // Import API client dynamically
+                        const { apiClient } = await import('./js/services/api-client.js');
+                        const data = await apiClient.postJson(`/api/agents/chat/${agentId}`, {
+                            message, 
+                            model, 
+                            enhance_prompt: enhancePrompt 
                         });
-                        const data = await response.json();
                         
                         // Remove typing indicator
                         virtualChat.removeMessage(typingMessageId);
@@ -286,8 +288,9 @@ class VirtualChatManager {
         if (!virtualChat) return;
         
         try {
-            const response = await fetch(`/api/agents/chat_history/${agentId}`);
-            const data = await response.json();
+            // Import API client dynamically
+            const { apiClient } = await import('./js/services/api-client.js');
+            const data = await apiClient.fetchJson(`/api/agents/chat_history/${agentId}`);
             
             if (data.success && data.history && data.history.length > 0) {
                 // Clear existing messages
@@ -445,3 +448,4 @@ window.debugVirtualChat = {
         }
     }
 };
+//# sourceMappingURL=virtual-chat-integration.js.map

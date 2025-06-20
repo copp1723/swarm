@@ -514,3 +514,4 @@ class VirtualChatContainer {
         };
     }
 }
+//# sourceMappingURL=virtual-chat.js.map

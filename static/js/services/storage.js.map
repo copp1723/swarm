@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "file": "storage.js",
+  "sourceRoot": "",
+  "sources": [
+    "storage.js"
+  ],
+  "sourcesContent": [
+    "// Storage service for managing local data\nexport class StorageService {\n    constructor() {\n        this.prefix = 'swarm_';\n    }\n\n    // Agent directories\n    getAgentDirectory(agentId) {\n        return localStorage.getItem(`${this.prefix}agent_dir_${agentId}`) || null;\n    }\n\n    setAgentDirectory(agentId, directory) {\n        localStorage.setItem(`${this.prefix}agent_dir_${agentId}`, directory);\n    }\n\n    // Chat history cache\n    getChatHistoryCache(agentId) {\n        const cached = localStorage.getItem(`${this.prefix}chat_cache_${agentId}`);\n        if (cached) {\n            try {\n                return JSON.parse(cached);\n            } catch (e) {\n                return null;\n            }\n        }\n        return null;\n    }\n\n    setChatHistoryCache(agentId, history) {\n        try {\n            localStorage.setItem(`${this.prefix}chat_cache_${agentId}`, JSON.stringify(history));\n        } catch (e) {\n            console.error('Failed to cache chat history:', e);\n        }\n    }\n\n    // Model preferences\n    getModelPreference(agentId) {\n        return localStorage.getItem(`${this.prefix}model_${agentId}`) || 'openai/gpt-4.1';\n    }\n\n    setModelPreference(agentId, model) {\n        localStorage.setItem(`${this.prefix}model_${agentId}`, model);\n    }\n\n    // Global settings\n    getEnhancePromptSetting() {\n        return localStorage.getItem(`${this.prefix}enhance_prompt`) !== 'false';\n    }\n\n    setEnhancePromptSetting(value) {\n        localStorage.setItem(`${this.prefix}enhance_prompt`, value.toString());\n    }\n\n    // Clear all storage\n    clearAll() {\n        const keys = Object.keys(localStorage);\n        keys.forEach(key => {\n            if (key.startsWith(this.prefix)) {\n                localStorage.removeItem(key);\n            }\n        });\n    }\n}"
+  ],
+  "names": [],
+  "mappings": "AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA"
+}

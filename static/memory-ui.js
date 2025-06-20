@@ -350,3 +350,4 @@ const memoryUI = new MemoryUI();
 document.addEventListener('DOMContentLoaded', () => {
     memoryUI.initialize();
 });
+//# sourceMappingURL=memory-ui.js.map

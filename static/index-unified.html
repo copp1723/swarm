@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Agent Command Center</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230EA5E9'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>">
+    
+    <!-- External Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind properly
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = { 
+                corePlugins: { preflight: false },
+                content: ['./index.html', './js/**/*.js']
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.socket.io/3.1.4/socket.io.min.js"></script>
+    
+    <!-- Unified Workspace Styles (Primary) -->
+    <link rel="stylesheet" href="/static/css/workspace.css">
+    
+    <!-- Legacy Styles (for compatibility) -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/advanced-ui.css">
+    <link rel="stylesheet" href="/static/css/ui-enhancements.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 font-sans antialiased transition-colors">
+    <!-- The interface will be dynamically loaded based on user preference -->
+    
+    <!-- Legacy Interface Elements (hidden by default) -->
+    <div id="legacy-interface" style="display: none;">
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg shadow-lg transition-colors">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="p-6 border-b border-gray-700">
+                <h2 class="text-xl font-bold flex items-center">
+                    <i data-lucide="bot" class="w-6 h-6 mr-2"></i>
+                    MCP Agents
+                </h2>
+            </div>
+            
+            <nav class="py-4">
+                <div class="px-4 mb-3">
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Available Agents</h3>
+                </div>
+                
+                <!-- Agent navigation items will be dynamically generated here -->
+                <div id="agent-nav-list">
+                    <!-- Agents will be populated by JavaScript -->
+                </div>
+            </nav>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700">
+                <button id="collapse-sidebar" class="w-full flex items-center justify-center p-2 text-gray-400 hover:text-white transition-colors">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    <span class="ml-2">Collapse</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 transition-colors">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+                            <span id="current-agent-name">Select an Agent</span>
+                        </h1>
+                        <span id="current-agent-status" class="px-3 py-1 text-xs font-medium rounded-full hidden md:inline-flex"></span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Enhance Prompts Toggle -->
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="enhance-prompt-global" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-2 text-sm text-gray-700">Enhance Prompts</span>
+                        </label>
+                        
+                        <!-- Dark Mode Toggle -->
+                        <button id="dark-mode-toggle" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Toggle dark mode">
+                            <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
+                            <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                        </button>
+                        
+                        <!-- Multi-Agent Collaboration -->
+                        <button id="open-collab-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <i data-lucide="users" class="w-4 h-4 mr-2"></i>
+                            Multi-Agent Task
+                        </button>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Agent chat containers -->
+            <div class="p-8">
+                <div id="agent-chats-container">
+                    <!-- Welcome message when no agent is selected -->
+                    <div id="welcome-message" class="flex items-center justify-center h-[60vh]">
+                        <div class="text-center">
+                            <i data-lucide="message-square" class="w-16 h-16 text-gray-300 mx-auto mb-4"></i>
+                            <h2 class="text-2xl font-semibold text-gray-700 mb-2">Welcome to MCP Agent Chat</h2>
+                            <p class="text-gray-500 mb-6">Select an agent from the sidebar to start a conversation</p>
+                            <div class="flex items-center justify-center space-x-4">
+                                <button onclick="window.app?.getAgentManager()?.selectAgent('product_01')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    Start with Product Agent
+                                </button>
+                                <button onclick="window.app?.getAgentManager()?.selectAgent('general_01')" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                                    Start with General Assistant
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Agent chat containers will be dynamically generated here -->
+                </div>
+            </div>
+        </main>
+        
+        <!-- Collaboration Modal placeholder -->
+        <div id="collab-modal" class="hidden">
+            <!-- Modal content will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script type="module" src="/static/js/app-unified.js"></script>
+    
+    <!-- Optional: Legacy UI Enhancements (loaded conditionally) -->
+    <script type="module">
+        // Only load legacy enhancements if using classic interface
+        const preference = localStorage.getItem('mcp_interface_preference');
+        const urlParams = new URLSearchParams(window.location.search);
+        const useUnified = urlParams.get('workspace') === 'unified' || preference === 'unified' || !preference;
+        
+        if (!useUnified) {
+            import('/static/js/ui-enhancements/agent-enhancements.js');
+        }
+    </script>
+</body>
+</html>

@@ -42,6 +42,7 @@ from middleware.security_headers import init_security_headers
 # Import models
 from models.core import db
 from utils.db_init import initialize_databases
+from utils.db_session_manager import init_session_management
 
 # Import blueprints
 from routes.chat import chat_bp
@@ -166,7 +167,7 @@ lifecycle_manager = ServiceLifecycleManager()
 _services_initialized = False
 
 def initialize_application_services():
-    """Initialize all application services using dependency injection"""
+    """Initialize all application services using dependency injection with validation"""
     global _services_initialized
     if _services_initialized:
         return
@@ -181,6 +182,22 @@ def initialize_application_services():
         container.register_singleton('celery', celery)
         container.register_singleton('socketio', socketio)
         
+        # Validate critical services before proceeding
+        from core.service_registry import validate_critical_services, ensure_service_available
+        critical_status = validate_critical_services()
+        failed_services = [name for name, status in critical_status.items() if not status]
+        
+        if failed_services:
+            logger.warning(f"Some critical services failed to initialize: {failed_services}")
+            # Try to create fallbacks for essential services
+            for service_name in failed_services:
+                if service_name == 'error_handler':
+                    from services.error_handler import ErrorHandler
+                    ensure_service_available(service_name, lambda: ErrorHandler())
+                elif service_name == 'notification_service':
+                    from utils.notification_service import NotificationService
+                    ensure_service_available(service_name, lambda: NotificationService())
+        
         # Get core services that need initialization
         services_to_init = [
             'event_bus',
@@ -194,56 +211,101 @@ def initialize_application_services():
         container.register_singleton('memory_monitor', memory_monitor)
         container.register_singleton('memory_optimizer', memory_optimizer)
         
-        # Add services to lifecycle manager
+        # Add services to lifecycle manager (only if they exist and have initialize method)
+        initialized_services = []
         for service_name in services_to_init:
             service = get_service(service_name)
             if service and hasattr(service, 'initialize'):
                 lifecycle_manager.add_service(service)
+                initialized_services.append(service_name)
+            elif service is None:
+                logger.warning(f"Service '{service_name}' not available for initialization")
         
-        # Initialize plugin system
+        logger.info(f"Added {len(initialized_services)} services to lifecycle manager: {initialized_services}")
+        
+        # Initialize plugin system with error handling
         plugin_loader = get_service('plugin_loader')
         if plugin_loader:
-            # Add default plugin directory
-            plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
-            if os.path.exists(plugin_dir):
-                plugin_loader.add_plugin_directory(plugin_dir)
-                logger.info(f"Added plugin directory: {plugin_dir}")
-            
-            # Start plugin discovery
-            async_manager.run_sync(plugin_loader.discover_and_load_plugins())
-            async_manager.run_sync(plugin_loader.start_watching())
-            logger.info("Plugin system initialized")
+            try:
+                # Add default plugin directory
+                plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
+                if os.path.exists(plugin_dir):
+                    plugin_loader.add_plugin_directory(plugin_dir)
+                    logger.info(f"Added plugin directory: {plugin_dir}")
+                
+                # Start plugin discovery with timeout protection
+                async_manager.run_sync(plugin_loader.discover_and_load_plugins())
+                async_manager.run_sync(plugin_loader.start_watching())
+                logger.info("Plugin system initialized successfully")
+            except Exception as e:
+                logger.warning(f"Plugin system initialization failed (non-critical): {e}")
+        else:
+            logger.warning("Plugin loader not available")
         
-        # Initialize all services
-        async_manager.run_sync(lifecycle_manager.initialize_all())
+        # Initialize all services with error handling
+        try:
+            async_manager.run_sync(lifecycle_manager.initialize_all())
+            logger.info("Lifecycle manager initialized all services")
+        except Exception as e:
+            logger.error(f"Lifecycle manager initialization failed: {e}")
+            # Don't fail completely - some services might still work
 
         # ------------------------------------------------------------------ #
-        # Initialise services that require an async startup step
+        # Initialize services that require an async startup step
         # ------------------------------------------------------------------ #
         container = get_container()
         if hasattr(container, '_async_init_services'):
             logger.info("Starting async service initialization...")
+            async_services_initialized = []
             for service_name in container._async_init_services:
                 service = get_service(service_name)
                 if service and hasattr(service, 'initialize'):
                     try:
                         async_manager.run_sync(service.initialize())
+                        async_services_initialized.append(service_name)
                         logger.info(f"Async initialized: {service_name}")
                     except Exception as e:
                         logger.error(f"Failed to async initialize {service_name}: {e}")
-                        raise
+                        # Continue with other services instead of failing completely
+                elif service is None:
+                    logger.warning(f"Async service '{service_name}' not available")
+            
+            logger.info(f"Successfully initialized {len(async_services_initialized)} async services")
         
-        # Start MCP servers
+        # Start MCP servers with fallback handling
         mcp_manager = get_service('mcp_manager')
         if mcp_manager:
-            logger.info("Initializing MCP servers...")
-            async_manager.run_sync(mcp_manager.start_all_servers())
+            try:
+                logger.info("Initializing MCP servers...")
+                async_manager.run_sync(mcp_manager.start_all_servers())
+                logger.info("MCP servers initialized successfully")
+            except Exception as e:
+                logger.error(f"MCP server initialization failed (non-critical): {e}")
+                # MCP failure shouldn't break the entire app
+        else:
+            logger.warning("MCP manager not available - some features may be limited")
         
         _services_initialized = True
-        logger.info("All application services initialized successfully")
+        
+        # Log final service status
+        from core.service_registry import get_service_status
+        status = get_service_status()
+        logger.info(f"Service initialization complete: {status['total_registered']} services registered, {status['singletons_active']} singletons active")
+        
+        # Log any services that failed
+        failed_services = [name for name, info in status.get('services', {}).items() if not info.get('available', False)]
+        if failed_services:
+            logger.warning(f"Some services are not available: {failed_services}")
         
     except Exception as e:
-        logger.error(f"Failed to initialize services: {e}")
+        logger.error(f"Critical failure during service initialization: {e}")
+        # Log service status for debugging
+        try:
+            from core.service_registry import get_service_status
+            status = get_service_status()
+            logger.error(f"Service status at failure: {status}")
+        except:
+            pass
         raise
 
 @app.route('/workflows')
@@ -275,12 +337,12 @@ def static_files(filename):
     return send_from_directory(app.static_folder, filename)
 
 @app.route('/health')
-@async_manager.async_route
-async def health_check():
-    """Health check endpoint using async database"""
+def health_check():
+    """Health check endpoint with proper database handling"""
     from flask import jsonify
     from datetime import datetime
     import time
+    from utils.db_operations import HealthCheckOps, SystemLogOps, DatabaseUtils
     
     start_time = time.time()
     health_status = {
@@ -292,28 +354,47 @@ async def health_check():
         'services': {}
     }
     
-    # Check sync database
-    try:
-        from sqlalchemy import text
-        db.session.execute(text('SELECT 1'))
-        health_status['database'] = 'connected'
-    except Exception as e:
-        health_status['database'] = f'error: {str(e)}'
-        health_status['status'] = 'unhealthy'
+    # Initialize database if needed
+    DatabaseUtils.initialize_database(app)
     
-    # Check async database
+    # Check both sync and async databases using the new unified approach
     try:
-        from repositories.async_repositories import AsyncSystemLogRepository
-        await AsyncSystemLogRepository.log_event(
-            event_type='health_check',
-            event_source='app',
-            message='Health check performed',
-            additional_data={'endpoint': '/health'}
-        )
-        health_status['async_database'] = 'connected'
+        # Run async health check in sync context
+        db_check_results = DatabaseUtils.run_in_sync_context(HealthCheckOps.check_both)
+        
+        health_status['database'] = db_check_results['sync_database']['status']
+        health_status['async_database'] = db_check_results['async_database']['status']
+        
+        if db_check_results['sync_database'].get('error'):
+            health_status['database_error'] = db_check_results['sync_database']['error']
+            health_status['status'] = 'unhealthy'
+        
+        if db_check_results['async_database'].get('error'):
+            health_status['async_database_error'] = db_check_results['async_database']['error']
+            if health_status['status'] == 'healthy':
+                health_status['status'] = 'degraded'
+        
+        # Log health check event (sync)
+        try:
+            SystemLogOps.log_event(
+                event_type='health_check',
+                event_source='app',
+                message='Health check performed',
+                additional_data={
+                    'endpoint': '/health',
+                    'db_status': db_check_results
+                },
+                use_async=False
+            )
+        except Exception as log_error:
+            logger.warning(f"Failed to log health check event: {log_error}")
+            
     except Exception as e:
-        health_status['async_database'] = f'error: {str(e)}'
-        health_status['status'] = 'degraded'
+        logger.error(f"Database health check failed: {e}")
+        health_status['database'] = 'error'
+        health_status['async_database'] = 'error'
+        health_status['database_error'] = str(e)
+        health_status['status'] = 'unhealthy'
     
     # Check MCP servers
     mcp_manager = get_service('mcp_manager')
@@ -333,16 +414,22 @@ async def health_check():
     # Add memory stats
     memory_monitor = get_service('memory_monitor')
     if memory_monitor:
-        memory_stats = memory_monitor.get_memory_stats()
-        health_status['memory'] = {
-            'usage_mb': round(memory_stats['memory_used_mb'], 1),
-            'percent': round(memory_stats['memory_percent'], 1)
-        }
+        try:
+            memory_stats = memory_monitor.get_memory_stats()
+            health_status['memory'] = {
+                'usage_mb': round(memory_stats['memory_used_mb'], 1),
+                'percent': round(memory_stats['memory_percent'], 1)
+            }
+        except Exception as e:
+            logger.warning(f"Failed to get memory stats: {e}")
     
     # Add response time
     health_status['response_time_ms'] = round((time.time() - start_time) * 1000, 2)
     
-    return jsonify(health_status)
+    # Return appropriate status code based on health
+    status_code = 200 if health_status['status'] == 'healthy' else 503
+    
+    return jsonify(health_status), status_code
 
 @app.teardown_appcontext
 def shutdown_services(error=None):
@@ -368,6 +455,10 @@ if __name__ == '__main__':
     with app.app_context():
         initialize_databases(app)
         logger.info("All databases initialized successfully")
+        
+        # Initialize session management
+        init_session_management(app)
+        logger.info("Database session management initialized")
     
     # Initialize all application services
     initialize_application_services()

@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from celery import current_task, current_app
 from config.celery_config import celery_app
 from services.token_replay_cache import get_token_replay_cache
+from utils.db_session_manager import session_manager
+from utils.database_access import db_access
 
 logger = logging.getLogger(__name__)
 
@@ -384,6 +386,134 @@ async def _system_health_check_async() -> Dict[str, Any]:
         logger.error(f"Error in system health check: {e}")
         return {
             'overall_status': 'error',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+
+@celery_app.task(name='tasks.maintenance_tasks.cleanup_stale_db_sessions')
+def cleanup_stale_db_sessions() -> Dict[str, Any]:
+    """
+    Clean up stale database sessions to prevent connection leaks.
+    This task should run periodically (every 5-10 minutes).
+    
+    Returns:
+        Cleanup statistics
+    """
+    try:
+        logger.info("Starting database session cleanup")
+        
+        # Get session stats before cleanup
+        stats_before = session_manager.get_session_stats()
+        
+        # Clean up stale sessions
+        session_manager.cleanup_stale_sessions()
+        
+        # Get session stats after cleanup
+        stats_after = session_manager.get_session_stats()
+        
+        # Close any orphaned connections in the pool
+        try:
+            db_access._sync_engine.dispose()
+            logger.info("Disposed of sync engine connections")
+        except Exception as e:
+            logger.warning(f"Failed to dispose sync engine: {e}")
+        
+        result = {
+            'success': True,
+            'timestamp': datetime.utcnow().isoformat(),
+            'sessions_before': stats_before['active_sessions'],
+            'sessions_after': stats_after['active_sessions'],
+            'sessions_cleaned': stats_before['active_sessions'] - stats_after['active_sessions'],
+            'stats': {
+                'before': stats_before,
+                'after': stats_after
+            }
+        }
+        
+        logger.info(f"Database session cleanup completed: {result}")
+        
+        # Schedule next cleanup
+        cleanup_stale_db_sessions.apply_async(countdown=300)  # Run again in 5 minutes
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in database session cleanup: {e}")
+        
+        # Still schedule next cleanup even on error
+        cleanup_stale_db_sessions.apply_async(countdown=600)  # Run again in 10 minutes
+        
+        return {
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+
+@celery_app.task(name='tasks.maintenance_tasks.optimize_database')
+def optimize_database() -> Dict[str, Any]:
+    """
+    Perform database optimization tasks.
+    This should run daily during low-traffic periods.
+    
+    Returns:
+        Optimization results
+    """
+    try:
+        logger.info("Starting database optimization")
+        
+        from sqlalchemy import text
+        from utils.db_operations import DatabaseUtils
+        
+        results = {
+            'success': True,
+            'timestamp': datetime.utcnow().isoformat(),
+            'optimizations': []
+        }
+        
+        # Initialize database if needed
+        DatabaseUtils.initialize_database()
+        
+        # Run VACUUM for SQLite or ANALYZE for PostgreSQL
+        with db_access.get_sync_session() as session:
+            db_url = str(session.bind.url)
+            
+            if 'sqlite' in db_url:
+                # SQLite optimizations
+                session.execute(text('VACUUM'))
+                session.execute(text('ANALYZE'))
+                results['optimizations'].append('SQLite VACUUM and ANALYZE completed')
+                
+            elif 'postgresql' in db_url or 'postgres' in db_url:
+                # PostgreSQL optimizations
+                session.execute(text('ANALYZE'))
+                results['optimizations'].append('PostgreSQL ANALYZE completed')
+                
+                # Update table statistics
+                session.execute(text('''
+                    SELECT schemaname, tablename 
+                    FROM pg_tables 
+                    WHERE schemaname = 'public'
+                '''))
+                tables = session.fetchall()
+                
+                for schema, table in tables:
+                    try:
+                        session.execute(text(f'ANALYZE {schema}.{table}'))
+                        results['optimizations'].append(f'Analyzed table: {table}')
+                    except Exception as e:
+                        logger.warning(f"Failed to analyze table {table}: {e}")
+            
+            session.commit()
+        
+        logger.info(f"Database optimization completed: {results}")
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error in database optimization: {e}")
+        return {
+            'success': False,
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
         }

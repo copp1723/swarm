@@ -21,7 +21,12 @@ def init_socketio(app):
         app,
         cors_allowed_origins="*",
         async_mode='gevent',
-        logger=True
+        logger=True,
+        allow_upgrades=True,
+        ping_timeout=60,
+        ping_interval=25,
+        engineio_logger=True,
+        transports=['websocket', 'polling']
     )
     
     # Register event handlers

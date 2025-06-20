@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "file": "config.js",
+  "sourceRoot": "",
+  "sources": [
+    "config.js"
+  ],
+  "sourcesContent": [
+    "// Configuration for the frontend\nexport const config = {\n    // API Key - Replace with your actual API key from the server logs\n    // When you start the server, look for \"Development API Key: swarm_dev_default_...\"\n    API_KEY: localStorage.getItem('swarm_api_key') || '',\n    \n    // Base URLs\n    API_BASE_URL: '/api',\n    WS_URL: `ws://${window.location.host}`,\n    \n    // Feature flags\n    AUTH_ENABLED: true,\n    DEBUG_MODE: true\n};\n\n// Helper to set API key\nexport function setApiKey(key) {\n    localStorage.setItem('swarm_api_key', key);\n    config.API_KEY = key;\n    console.log('API key updated');\n}\n\n// Helper to get auth headers\nexport function getAuthHeaders() {\n    const headers = {\n        'Content-Type': 'application/json'\n    };\n    \n    if (config.AUTH_ENABLED && config.API_KEY) {\n        headers['X-API-Key'] = config.API_KEY;\n    }\n    \n    return headers;\n}"
+  ],
+  "names": [],
+  "mappings": "AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;;AAAA;AAAA"
+}

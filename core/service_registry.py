@@ -3,7 +3,7 @@ Service Registration and Configuration
 Central place to configure all dependency injection
 """
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from core.dependency_injection import ServiceContainer, Scope
 from core.interfaces import (
@@ -266,12 +266,106 @@ def initialize_services() -> ServiceContainer:
 
 # Convenience function for getting services
 def get_service(service_name: str):
-    """Get a service from the container"""
-    container = initialize_services()
-    return container.get_service(service_name)
+    """Get a service from the container with proper error handling"""
+    try:
+        container = initialize_services()
+        service = container.get_service(service_name)
+        if service is None:
+            logger.warning(f"Service '{service_name}' not found in container")
+        return service
+    except Exception as e:
+        logger.error(f"Failed to get service '{service_name}': {e}", exc_info=True)
+        return None
 
 
 def get_required_service(service_name: str):
-    """Get a required service from the container"""
+    """Get a required service from the container with validation"""
+    try:
+        container = initialize_services()
+        service = container.get_required_service(service_name)
+        logger.debug(f"Successfully retrieved required service: {service_name}")
+        return service
+    except Exception as e:
+        logger.error(f"Failed to get required service '{service_name}': {e}", exc_info=True)
+        raise RuntimeError(f"Required service '{service_name}' is unavailable: {e}") from e
+
+
+def validate_critical_services() -> Dict[str, bool]:
+    """Validate that critical services are available"""
+    critical_services = [
+        'mcp_manager',
+        'multi_agent_task_service', 
+        'error_handler',
+        'config_manager',
+        'notification_service'
+    ]
+    
+    validation_results = {}
     container = initialize_services()
-    return container.get_required_service(service_name)
+    
+    for service_name in critical_services:
+        try:
+            service = container.get_service(service_name)
+            validation_results[service_name] = service is not None
+            if service is None:
+                logger.warning(f"Critical service '{service_name}' is not available")
+        except Exception as e:
+            logger.error(f"Failed to validate service '{service_name}': {e}")
+            validation_results[service_name] = False
+    
+    return validation_results
+
+
+def get_service_status() -> Dict[str, Any]:
+    """Get status of all registered services"""
+    try:
+        container = initialize_services()
+        services_status = {
+            'total_registered': len(container._services),
+            'singletons_active': len(container._singletons),
+            'services': {}
+        }
+        
+        for service_name in container._services.keys():
+            try:
+                service = container.get_service(service_name)
+                services_status['services'][service_name] = {
+                    'available': service is not None,
+                    'type': type(service).__name__ if service else None,
+                    'scope': container._services[service_name].scope.value
+                }
+            except Exception as e:
+                services_status['services'][service_name] = {
+                    'available': False,
+                    'error': str(e)
+                }
+        
+        return services_status
+    except Exception as e:
+        logger.error(f"Failed to get service status: {e}")
+        return {'error': str(e), 'total_registered': 0, 'services': {}}
+
+
+def ensure_service_available(service_name: str, fallback_factory=None) -> Any:
+    """Ensure a service is available, create with fallback if needed"""
+    try:
+        service = get_service(service_name)
+        if service is not None:
+            return service
+            
+        if fallback_factory and callable(fallback_factory):
+            logger.info(f"Creating fallback service for '{service_name}'")
+            fallback_service = fallback_factory()
+            
+            # Register the fallback
+            container = initialize_services()
+            container.register_singleton(service_name, fallback_service)
+            
+            return fallback_service
+        else:
+            logger.warning(f"Service '{service_name}' unavailable and no fallback provided")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Failed to ensure service '{service_name}' availability: {e}")
+        return None
