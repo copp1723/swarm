@@ -1,0 +1,35 @@
+{
+  "name": "mcp_new_project",
+  "version": "1.0.0",
+  "description": "A powerful multi-agent AI system for collaborative software development, featuring specialized agents for architecture, coding, testing, security, and DevOps, with advanced NLU capabilities and intelligent task orchestration.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "qa:cross-browser": "node scripts/run-cross-browser-qa.js",
+    "qa:chrome": "cypress run --browser chrome --spec cypress/e2e/cross-browser-viewport-qa.cy.js",
+    "qa:firefox": "cypress run --browser firefox --spec cypress/e2e/cross-browser-viewport-qa.cy.js",
+    "qa:webkit": "cypress run --browser webkit --spec cypress/e2e/cross-browser-viewport-qa.cy.js",
+    "qa:open": "cypress open",
+    "qa:headless": "cypress run --headless",
+    "qa:issues": "node scripts/github-issues.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/copp1723/swarm.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/copp1723/swarm/issues"
+  },
+  "homepage": "https://github.com/copp1723/swarm#readme",
+  "devDependencies": {
+    "cypress": "^14.5.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "file": "dom-helpers.js",
+  "sourceRoot": "",
+  "sources": [
+    "dom-helpers.js"
+  ],
+  "sourcesContent": [
+    "// DOM helper utilities\nexport function createElement(tag, className, innerHTML = '') {\n    const element = document.createElement(tag);\n    if (className) element.className = className;\n    if (innerHTML) element.innerHTML = innerHTML;\n    return element;\n}\n\nexport function escapeHtml(text) {\n    const div = document.createElement('div');\n    div.textContent = text;\n    return div.innerHTML;\n}\n\nexport function showNotification(message, type = 'info') {\n    const typeClasses = {\n        error: 'bg-red-500 text-white',\n        success: 'bg-green-500 text-white',\n        warning: 'bg-yellow-500 text-white',\n        info: 'bg-blue-500 text-white'\n    };\n\n    const notification = createElement('div', \n        `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 animate-slide-in ${typeClasses[type] || typeClasses.info}`\n    );\n    notification.textContent = message;\n    document.body.appendChild(notification);\n    \n    setTimeout(() => {\n        notification.style.opacity = '0';\n        notification.style.transition = 'opacity 0.3s';\n        setTimeout(() => notification.remove(), 300);\n    }, 3000);\n}\n\nexport function updateIcons() {\n    if (typeof lucide !== 'undefined') {\n        lucide.createIcons();\n    }\n}"
+  ],
+  "names": [],
+  "mappings": "AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA"
+}

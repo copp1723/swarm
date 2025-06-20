@@ -833,3 +833,5 @@ export class CollaborationModal {
         showNotification(`${comm.from_agent} is working on the task`, 'info');
     }
 }
+
+//# sourceMappingURL=collaboration-modal.js.map

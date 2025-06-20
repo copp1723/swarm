@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "file": "agent-config.js",
+  "sourceRoot": "",
+  "sources": [
+    "agent-config.js"
+  ],
+  "sourcesContent": [
+    "// Agent configuration module\nexport const AGENTS = [\n    { \n        id: 'product_01', \n        name: 'Product Agent', \n        role: 'Product management and feature planning', \n        icon: 'package', \n        color: 'purple' \n    },\n    { \n        id: 'coding_01', \n        name: 'Coding Agent', \n        role: 'Software development and code implementation', \n        icon: 'code', \n        color: 'green' \n    },\n    { \n        id: 'bug_01', \n        name: 'Bug Agent', \n        role: 'Bug detection and quality assurance', \n        icon: 'bug', \n        color: 'red' \n    },\n    { \n        id: 'general_01', \n        name: 'General Assistant', \n        role: 'General purpose AI assistant', \n        icon: 'message-circle', \n        color: 'gray' \n    }\n];\n\nexport const AGENT_COLORS = {\n    purple: 'bg-purple-500',\n    green: 'bg-green-500',\n    blue: 'bg-blue-500',\n    red: 'bg-red-500',\n    orange: 'bg-orange-500',\n    gray: 'bg-gray-500'\n};\n\nexport function getAgentById(agentId) {\n    return AGENTS.find(a => a.id === agentId);\n}\n\nexport function getAgentByName(agentName) {\n    return AGENTS.find(a => \n        a.name === agentName || \n        a.name.toLowerCase().includes(agentName.toLowerCase()) ||\n        a.id.includes(agentName)\n    );\n}\n\nexport function getAgentColor(color) {\n    return AGENT_COLORS[color] || AGENT_COLORS.gray;\n}"
+  ],
+  "names": [],
+  "mappings": "AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;;AAAA;AAAA;AAAA"
+}

@@ -6,7 +6,11 @@ import { AgentStatusManager } from './components/agent-status-manager.js';
 import { WebSocketService } from './services/websocket.js';
 import { StorageService } from './services/storage.js';
 import { showNotification } from './utils/dom-helpers.js';
-import { initApiKeySetup } from './components/api-key-setup.js';
+import { initApiKeySetup, showProviderWarning, updateUIForProviderStatus } from './components/api-key-setup.js';
+import { apiClient } from './services/api-client.js';
+import { darkModeManager } from './utils/dark-mode.js';
+import { dragDropManager } from './utils/drag-drop.js';
+import { mentionAutocomplete } from './utils/mention-autocomplete.js';
 
 class App {
     constructor() {
@@ -15,7 +19,7 @@ class App {
         this.storage = new StorageService();
         this.collaborationModal = null;
         this.workflowVisualization = new WorkflowVisualization();
-        this.agentStatusManager = new AgentStatusManager();
+        this.agentStatusManager = new AgentStatusManager(this.wsService);
     }
 
     async init() {
@@ -23,8 +27,14 @@ class App {
             // Initialize API key setup if needed
             initApiKeySetup();
             
+            // Check provider configuration and update UI accordingly
+            await this.checkProviderConfiguration();
+            
             // Initialize core components
             await this.agentManager.init();
+            
+            // Initialize advanced UI features
+            this.initializeAdvancedFeatures();
             
             // Initialize WebSocket
             this.wsService.connect();
@@ -44,6 +54,9 @@ class App {
             
             // Load preferences
             this.loadGlobalPreferences();
+            
+            // Set up periodic health checks
+            this.setupHealthChecks();
             
             // Show welcome notification
             showNotification('MCP Agent Chat Interface loaded successfully', 'success');
@@ -125,6 +138,45 @@ class App {
             }
         });
         
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) {
+                    sidebar.classList.toggle('open');
+                    // Update button icon
+                    const icon = mobileMenuBtn.querySelector('i');
+                    if (sidebar.classList.contains('open')) {
+                        icon.setAttribute('data-lucide', 'x');
+                    } else {
+                        icon.setAttribute('data-lucide', 'menu');
+                    }
+                    // Refresh lucide icons
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }
+            });
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            
+            if (window.innerWidth < 768 && sidebar && sidebar.classList.contains('open')) {
+                if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                    sidebar.classList.remove('open');
+                    const icon = mobileMenuBtn.querySelector('i');
+                    icon.setAttribute('data-lucide', 'menu');
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }
+            }
+        });
+        
         // Handle window resize
         let resizeTimeout;
         window.addEventListener('resize', () => {
@@ -166,6 +218,175 @@ class App {
     getStorageService() {
         return this.storage;
     }
+
+    /**
+     * Check and handle provider configuration status
+     */
+    /**
+     * Initialize advanced UI features like drag-drop and mentions
+     */
+    initializeAdvancedFeatures() {
+        // Setup drag and drop for agent workspace
+        const workspaceContainer = document.getElementById('agent-chats-container');
+        if (workspaceContainer) {
+            dragDropManager.setupWorkspaceDropZones(workspaceContainer);
+        }
+        
+        // Listen for agent list updates to enable drag-drop on agent items
+        document.addEventListener('agentsLoaded', (event) => {
+            const agents = event.detail.agents;
+            
+            // Register agents for mention autocomplete
+            mentionAutocomplete.registerAgents(agents);
+            
+            // Enable drag-drop on agent navigation items
+            agents.forEach(agent => {
+                const agentNavItem = document.querySelector(`[data-agent-id="${agent.role}"]`);
+                if (agentNavItem) {
+                    dragDropManager.enableAgentDragging(agent.role, agentNavItem);
+                }
+            });
+        });
+        
+        // Listen for new chat inputs to enable mention autocomplete
+        document.addEventListener('chatInputCreated', (event) => {
+            const inputElement = event.detail.inputElement;
+            if (inputElement) {
+                mentionAutocomplete.enableFor(inputElement);
+            }
+        });
+        
+        // Global drag-drop event listeners
+        document.addEventListener('agentDropped', (event) => {
+            const { agent_id, position, name } = event.detail;
+            this.handleAgentWorkspaceDrop(agent_id, position, name);
+        });
+        
+        document.addEventListener('agentCollaboration', (event) => {
+            const { source, target, type } = event.detail;
+            this.handleAgentCollaboration(source, target, type);
+        });
+        
+        // Add keyboard shortcuts for agent switching
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + 1-9 to switch between agents
+            if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+                e.preventDefault();
+                const agentIndex = parseInt(e.key) - 1;
+                const agentProfiles = this.agentManager.agentProfiles;
+                if (agentProfiles && agentProfiles[agentIndex]) {
+                    this.agentManager.selectAgent(agentProfiles[agentIndex].role);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Handle agent dropped into workspace
+     * @param {string} agentId 
+     * @param {Object} position 
+     * @param {string} name 
+     */
+    handleAgentWorkspaceDrop(agentId, position, name) {
+        // Auto-select the dropped agent
+        this.agentManager.selectAgent(agentId);
+        
+        // Show success notification
+        showNotification(`${name} is now active in the workspace`, 'success');
+        
+        // Optional: Auto-focus the input for immediate interaction
+        setTimeout(() => {
+            const input = document.getElementById(`input-${agentId}`);
+            if (input) {
+                input.focus();
+                input.placeholder = 'Start chatting with ' + name + '...';
+            }
+        }, 500);
+    }
+    
+    /**
+     * Handle agent collaboration events
+     * @param {string} sourceAgentId 
+     * @param {string} targetAgentId 
+     * @param {string} type 
+     */
+    handleAgentCollaboration(sourceAgentId, targetAgentId, type) {
+        if (type === 'chat_handoff') {
+            // Get the current message from source agent if any
+            const sourceInput = document.getElementById(`input-${sourceAgentId}`);
+            const targetInput = document.getElementById(`input-${targetAgentId}`);
+            
+            if (sourceInput && targetInput && sourceInput.value.trim()) {
+                const message = sourceInput.value.trim();
+                
+                // Add handoff prefix to target input
+                targetInput.value = `@${sourceAgentId} handed this off: "${message}"`;
+                sourceInput.value = ''; // Clear source
+                
+                // Switch to target agent
+                this.agentManager.selectAgent(targetAgentId);
+                targetInput.focus();
+                
+                showNotification(`Conversation handed off from ${sourceAgentId} to ${targetAgentId}`, 'info');
+            }
+        }
+    }
+
+    async checkProviderConfiguration() {
+        try {
+            const providerStatus = await apiClient.checkProviderConfiguration();
+            
+            // Show warning if no providers are configured
+            showProviderWarning(providerStatus);
+            
+            // Update UI based on provider status
+            updateUIForProviderStatus(providerStatus);
+            
+            // Store status globally for other components to use
+            window.providerStatus = providerStatus;
+            
+            console.log('Provider status:', providerStatus);
+            return providerStatus;
+        } catch (error) {
+            console.warn('Could not check provider configuration:', error);
+            
+            // Assume degraded state if we can't check
+            const degradedStatus = {
+                openrouter: false,
+                openai: false,
+                hasAnyProvider: false
+            };
+            
+            showProviderWarning(degradedStatus);
+            updateUIForProviderStatus(degradedStatus);
+            window.providerStatus = degradedStatus;
+            return degradedStatus;
+        }
+    }
+
+    /**
+     * Set up periodic health checks for API and providers
+     */
+    setupHealthChecks() {
+        // Check API health every 30 seconds
+        setInterval(async () => {
+            const isHealthy = await apiClient.checkApiHealth();
+            
+            // Update global API health status
+            window.apiHealthy = isHealthy;
+            
+            // If API is healthy, also check provider status every 5 minutes
+            if (isHealthy) {
+                const now = Date.now();
+                const lastProviderCheck = window.lastProviderCheck || 0;
+                
+                if (now - lastProviderCheck > 300000) { // 5 minutes
+                    await this.checkProviderConfiguration();
+                    window.lastProviderCheck = now;
+                }
+            }
+        }, 30000);
+    }
 }
 
 // Global error handler
@@ -188,3 +409,4 @@ if (document.readyState === 'loading') {
 
 // Export for debugging and extensions
 export default App;
+//# sourceMappingURL=app.js.map

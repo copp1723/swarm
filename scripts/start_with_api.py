@@ -299,6 +299,11 @@ def index():
 def serve_static(filename):
     return send_from_directory(str(static_folder), filename)
 
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon from static folder"""
+    return send_from_directory(str(static_folder), 'favicon.ico')
+
 @app.route('/health')
 def health():
     return jsonify({

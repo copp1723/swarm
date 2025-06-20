@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Status Indicators Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .status-indicator { transition: all 0.3s ease; }
+        .enhanced-nav-dot { transition: all 0.3s ease; }
+        .chat-loading-spinner { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">WebSocket Status Indicators Test</h1>
+        
+        <!-- Mock Agent Windows -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div id="agent-window-test_agent_1" class="agent-window bg-white rounded-lg shadow-md">
+                <div class="agent-header p-4 border-b relative">
+                    <h3 class="agent-title font-semibold">Test Agent 1</h3>
+                    <p class="text-sm text-gray-600">Testing agent status updates</p>
+                </div>
+                <div class="p-4">
+                    <div class="text-sm text-gray-500">Agent chat area...</div>
+                </div>
+            </div>
+            
+            <div id="agent-window-test_agent_2" class="agent-window bg-white rounded-lg shadow-md">
+                <div class="agent-header p-4 border-b relative">
+                    <h3 class="agent-title font-semibold">Test Agent 2</h3>
+                    <p class="text-sm text-gray-600">Another testing agent</p>
+                </div>
+                <div class="p-4">
+                    <div class="text-sm text-gray-500">Agent chat area...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mock Sidebar Navigation -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 class="text-lg font-semibold mb-4">Mock Navigation</h3>
+            <div class="space-y-2">
+                <div class="agent-nav-item flex items-center justify-between p-2 rounded" id="nav-test_agent_1">
+                    <span>Test Agent 1</span>
+                </div>
+                <div class="agent-nav-item flex items-center justify-between p-2 rounded" id="nav-test_agent_2">
+                    <span>Test Agent 2</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold mb-4">Test Controls</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button onclick="testStatus('test_agent_1', 'working')" 
+                        class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                    Agent 1 Working
+                </button>
+                <button onclick="testStatus('test_agent_1', 'completed')" 
+                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Agent 1 Complete
+                </button>
+                <button onclick="testStatus('test_agent_1', 'error')" 
+                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    Agent 1 Error
+                </button>
+                <button onclick="testStatus('test_agent_1', 'idle')" 
+                        class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Agent 1 Idle
+                </button>
+                
+                <button onclick="testStatus('test_agent_2', 'working')" 
+                        class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                    Agent 2 Working
+                </button>
+                <button onclick="testStatus('test_agent_2', 'completed')" 
+                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Agent 2 Complete
+                </button>
+                <button onclick="testStatus('test_agent_2', 'error')" 
+                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    Agent 2 Error
+                </button>
+                <button onclick="testStatus('test_agent_2', 'idle')" 
+                        class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Agent 2 Idle
+                </button>
+            </div>
+            
+            <div class="mt-6">
+                <button onclick="simulateWebSocketEvents()" 
+                        class="bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600">
+                    Simulate WebSocket Events
+                </button>
+                <button onclick="resetAllStatuses()" 
+                        class="bg-gray-500 text-white px-6 py-3 rounded hover:bg-gray-600 ml-4">
+                    Reset All
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status Display -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+            <h3 class="text-lg font-semibold mb-4">Current Status</h3>
+            <div id="status-display" class="font-mono text-sm"></div>
+        </div>
+    </div>
+
+    <!-- Load Components -->
+    <script type="module">
+        import { AgentStatusManager } from './js/components/agent-status-manager.js';
+        import { AgentUIEnhancements } from './js/ui-enhancements/agent-enhancements.js';
+        
+        // Mock WebSocket Service
+        class MockWebSocketService {
+            constructor() {
+                this.listeners = new Map();
+            }
+            
+            on(event, callback) {
+                if (!this.listeners.has(event)) {
+                    this.listeners.set(event, []);
+                }
+                this.listeners.get(event).push(callback);
+            }
+            
+            emit(event, data) {
+                if (this.listeners.has(event)) {
+                    this.listeners.get(event).forEach(callback => callback(data));
+                }
+            }
+        }
+        
+        // Initialize components
+        const mockWS = new MockWebSocketService();
+        window.agentUIEnhancements = new AgentUIEnhancements();
+        window.agentStatusManager = new AgentStatusManager(mockWS);
+        window.agentStatusManager.init();
+        
+        // Test functions
+        window.testStatus = (agentId, status) => {
+            const activities = {
+                working: 'Processing request...',
+                completed: 'Task completed successfully',
+                error: 'An error occurred',
+                idle: null
+            };
+            
+            window.agentStatusManager.updateAgentStatus(agentId, status, activities[status]);
+            updateStatusDisplay();
+        };
+        
+        window.simulateWebSocketEvents = () => {
+            // Simulate agent communication
+            mockWS.emit('agent_communication', {
+                from_agent: 'test_agent_1',
+                to_agent: 'test_agent_2',
+                message: 'Starting collaboration'
+            });
+            
+            setTimeout(() => {
+                // Simulate task progress
+                mockWS.emit('task_progress', {
+                    agent_statuses: {
+                        test_agent_1: { status: 'working', activity: 'Analyzing data...' },
+                        test_agent_2: { status: 'working', activity: 'Processing results...' }
+                    }
+                });
+            }, 1000);
+            
+            setTimeout(() => {
+                // Simulate task completion
+                mockWS.emit('task_complete', {
+                    agent_id: 'test_agent_1'
+                });
+            }, 3000);
+            
+            setTimeout(() => {
+                // Simulate task completion for agent 2
+                mockWS.emit('task_complete', {
+                    agent_id: 'test_agent_2'
+                });
+            }, 4000);
+        };
+        
+        window.resetAllStatuses = () => {
+            window.agentStatusManager.resetAllAgentStatuses();
+            updateStatusDisplay();
+        };
+        
+        function updateStatusDisplay() {
+            const statuses = window.agentStatusManager.getAllAgentStatuses();
+            document.getElementById('status-display').innerHTML = JSON.stringify(statuses, null, 2);
+        }
+        
+        // Initialize status display
+        updateStatusDisplay();
+        
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+

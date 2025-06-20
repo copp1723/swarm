@@ -10,11 +10,20 @@ from utils.error_catalog import ErrorCodes, format_error_response
 from utils.auth import require_auth, optional_auth
 from utils.rate_limiter import standard_rate_limit, strict_rate_limit
 from models.core import db, Conversation, Message
+from utils.db_operations import ConversationOps, MessageOps, SystemLogOps
+from utils.db_session_manager import with_managed_session, managed_session
 from services.service_container import get_service_container
 from services.error_handler import error_handler, ErrorCategory
 from config.constants import AgentSpecialty
 from services.nlu_service import analyze_task
 from services.orchestrator_service import orchestrator
+from utils.api_error_handler import (
+    handle_api_exception, APIException, ResourceNotFoundError,
+    ValidationError, ServiceUnavailableError, AgentError
+)
+from utils.api_response import success_response, error_response
+from utils.validation import validate_request_data
+from utils.decorators import require_service, log_endpoint_access
 
 agents_bp = Blueprint('agents', __name__, url_prefix='/api/agents')
 logger = logging.getLogger(__name__)
@@ -153,13 +162,15 @@ def execute_multi_agent_task():
                          f"Starting multi-agent task with {len(agents)} agents in {working_directory}",
                          session_id)
         
-        # Execute the task using service
-        service = get_service_container().get('multi_agent_task_service')
+        # Execute the task using service with validation
+        from core.service_registry import ensure_service_available
+        service = ensure_service_available('multi_agent_task_service')
         if not service:
             return jsonify({
                 'success': False,
                 'error': 'Multi-agent task service not available',
-                'task_id': None
+                'task_id': None,
+                'details': 'Service initialization failed - check logs for errors'
             }), 503
             
         result = service.execute_repository_task(
@@ -353,103 +364,124 @@ def get_agent_chat_history(agent_id: str):
         return jsonify({'success': True, 'agent_id': agent_id, 'history': []})
 
 @agents_bp.route('/chat_history/<agent_id>', methods=['DELETE'])
+@handle_api_exception(error_handler_instance=error_handler)
+@log_endpoint_access()
 def clear_agent_chat_history(agent_id: str):
     """Clear chat history for a specific agent."""
-    try:
-        service = get_service_container().get('multi_agent_task_service')
-        if not service:
-            return jsonify({'success': True, 'agent_id': agent_id, 'message': 'No history to clear (service unavailable)'})
-            
-        service.executor.clear_agent_chat_history(agent_id)
-        return jsonify({'success': True, 'agent_id': agent_id, 'message': 'Chat history cleared'})
-    except Exception as e:
-        # Return success instead of error to not break UI
-        logger.warning(f"Failed to clear chat history for {agent_id}: {e}")
-        return jsonify({'success': True, 'agent_id': agent_id, 'message': 'No history to clear'})
+    service = get_service_container().get('multi_agent_task_service')
+    if not service:
+        return success_response(
+            data={'agent_id': agent_id},
+            message='No history to clear (service unavailable)'
+        )
+        
+    service.executor.clear_agent_chat_history(agent_id)
+    return success_response(
+        data={'agent_id': agent_id},
+        message='Chat history cleared successfully'
+    )
 
 @agents_bp.route('/collaborate', methods=['POST'])
+@handle_api_exception(error_handler_instance=error_handler)
+@validate_request_data(
+    required_fields=['task_description', 'tagged_agents']
+)
+@require_service('multi_agent_task_service')
+@log_endpoint_access()
 def execute_collaborative_task():
     """Execute a collaborative task with tagged agents."""
     session_id = get_session_id()
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No JSON data provided', 'success': False}), 400
-        
-        task_description = data.get('task_description', '').strip()
-        tagged_agents = data.get('tagged_agents', [])  # List of agent IDs
-        working_directory = data.get('working_directory', './').strip()
-        sequential = data.get('sequential', False)
-        enhance_prompt = data.get('enhance_prompt', False)  # Default to True
-        
-        if not task_description or not tagged_agents:
-            return jsonify({'error': 'Task description and tagged agents are required', 'success': False}), 400
-        
-        log_system_event('info', 'collaborative_task',
-                         f"Starting {'sequential' if sequential else 'parallel'} collaborative task with {len(tagged_agents)} agents in {working_directory}",
-                         session_id)
-        
-        service = get_service_container().get('multi_agent_task_service')
-        if not service:
-            return jsonify({
-                'success': False,
-                'error': 'Collaboration service not available',
-                'task_id': None
-            }), 503
-            
-        result = service.executor.execute_collaborative_task(task_description, tagged_agents, working_directory, sequential, enhance_prompt)
-        return jsonify(result)
-    except Exception as e:
-        error_context = error_handler.handle_error(
-            e, ErrorCategory.UNKNOWN_ERROR,
-            {'endpoint': 'execute_collaborative_task', 'task': task_description},
-            session_id
+    data = request.get_json()
+    
+    task_description = data.get('task_description', '').strip()
+    tagged_agents = data.get('tagged_agents', [])  # List of agent IDs
+    working_directory = data.get('working_directory', './').strip()
+    sequential = data.get('sequential', False)
+    enhance_prompt = data.get('enhance_prompt', False)  # Default to False
+    
+    # Additional validation
+    if not task_description:
+        raise APIException(
+            ErrorCodes.INVALID_PARAMETER,
+            parameter='task_description',
+            reason='Task description cannot be empty'
         )
-        return jsonify({'success': False, 'error': error_context.user_message}), 500
+    
+    if not tagged_agents:
+        raise APIException(
+            ErrorCodes.INVALID_PARAMETER,
+            parameter='tagged_agents',
+            reason='At least one agent must be specified'
+        )
+    
+    log_system_event('info', 'collaborative_task',
+                     f"Starting {'sequential' if sequential else 'parallel'} collaborative task with {len(tagged_agents)} agents in {working_directory}",
+                     session_id)
+    
+    service = get_service_container().get('multi_agent_task_service')
+    result = service.executor.execute_collaborative_task(
+        task_description, tagged_agents, working_directory, sequential, enhance_prompt
+    )
+    
+    # Return the result directly - it already has the proper format
+    return jsonify(result)
 
 @agents_bp.route('/upload/<agent_id>', methods=['POST'])
+@handle_api_exception(error_handler_instance=error_handler)
+@log_endpoint_access()
 def upload_file_to_agent(agent_id: str):
     """Handle file uploads for a specific agent."""
+    # Validate agent exists
+    if agent_id not in AGENT_PROFILES:
+        raise ResourceNotFoundError('agent', agent_id)
+    
+    if 'file' not in request.files:
+        raise APIException(
+            ErrorCodes.MISSING_PARAMETER,
+            parameter='file',
+            details={'info': 'File must be uploaded as multipart/form-data'}
+        )
+    
+    file = request.files['file']
+    if file.filename == '':
+        raise APIException(
+            ErrorCodes.INVALID_PARAMETER,
+            parameter='file',
+            reason='No file selected'
+        )
+    
+    # Save file to upload folder
+    filename = secure_filename(file.filename)
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(upload_path)
+    
+    # Use MCP filesystem tool to read the file and provide context to agent
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided', 'success': False}), 400
+        from services.mcp_manager import mcp_manager
+        from utils.async_wrapper import async_manager
         
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected', 'success': False}), 400
+        # Read file info using MCP
+        file_info = async_manager.run_sync(mcp_manager.call_tool("get_file_info", {
+            "path": upload_path
+        }))
         
-        # Save file to upload folder
-        filename = secure_filename(file.filename)
-        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(upload_path)
+        # If it's a text file, read contents
+        file_contents = ""
+        if filename.endswith(('.txt', '.csv', '.json', '.py', '.js', '.md', '.yml', '.yaml')):
+            try:
+                file_contents = async_manager.run_sync(mcp_manager.call_tool("read_file", {
+                    "path": upload_path
+                }))
+                # Limit content length
+                if len(file_contents) > 2000:
+                    file_contents = file_contents[:2000] + "... [truncated]"
+            except Exception as read_error:
+                file_contents = f"[Could not read file contents: {str(read_error)}]"
+        else:
+            file_contents = "[Binary file - contents not displayed]"
         
-        # Use MCP filesystem tool to read the file and provide context to agent
-        try:
-            from services.mcp_manager import mcp_manager
-            from utils.async_wrapper import async_manager
-            
-            # Read file info using MCP
-            file_info = async_manager.run_sync(mcp_manager.call_tool("get_file_info", {
-                "path": upload_path
-            }))
-            
-            # If it's a text file, read contents
-            file_contents = ""
-            if filename.endswith(('.txt', '.csv', '.json', '.py', '.js', '.md', '.yml', '.yaml')):
-                try:
-                    file_contents = async_manager.run_sync(mcp_manager.call_tool("read_file", {
-                        "path": upload_path
-                    }))
-                    # Limit content length
-                    if len(file_contents) > 2000:
-                        file_contents = file_contents[:2000] + "... [truncated]"
-                except Exception as read_error:
-                    file_contents = f"[Could not read file contents: {str(read_error)}]"
-            else:
-                file_contents = "[Binary file - contents not displayed]"
-            
-            # Create comprehensive message for agent
-            message = f"""File '{filename}' uploaded successfully.
+        # Create comprehensive message for agent
+        message = f"""File '{filename}' uploaded successfully.
 
 **File Information:**
 {file_info}
@@ -460,40 +492,47 @@ def upload_file_to_agent(agent_id: str):
 **File Path:** {upload_path}
 
 Please analyze this file according to your role as {AGENT_PROFILES.get(agent_id, {}).get('name', agent_id)}."""
-            
-        except Exception as mcp_error:
-            logger.error(f"MCP error during upload: {mcp_error}")
-            # Fallback message
-            message = f"File '{filename}' uploaded to {upload_path}. Note: Filesystem analysis unavailable due to MCP error: {str(mcp_error)}"
         
-        # Get the service and notify agent about the uploaded file
-        service = get_service_container().get('multi_agent_task_service')
-        if not service:
-            return jsonify({
-                'success': True,
+    except Exception as mcp_error:
+        logger.error(f"MCP error during upload: {mcp_error}")
+        # Fallback message
+        message = f"File '{filename}' uploaded to {upload_path}. Note: Filesystem analysis unavailable due to MCP error: {str(mcp_error)}"
+    
+    # Get the service and notify agent about the uploaded file
+    service = get_service_container().get('multi_agent_task_service')
+    if not service:
+        return success_response(
+            data={
                 'filename': filename,
                 'path': upload_path,
                 'agent_response': 'File received but agent service unavailable. The file has been saved and can be processed later.'
-            })
-            
-        result = service.executor.start_agent_chat(agent_id, message)
+            },
+            message='File uploaded successfully (service unavailable)'
+        )
         
-        return jsonify({
-            'success': True,
+    result = service.executor.start_agent_chat(agent_id, message)
+    
+    return success_response(
+        data={
             'filename': filename,
             'path': upload_path,
             'agent_response': result.get('response', 'File received and analyzed')
-        })
-        
-    except Exception as e:
-        logger.error(f"Upload error: {e}")
-        return jsonify({'error': f"Upload failed: {str(e)}", 'success': False}), 500
+        },
+        message='File uploaded and processed successfully'
+    )
 
-def _save_agent_conversation(conversation_id, task_description, result, session_id):
-    """Save agent conversation to database"""
+@with_managed_session
+def _save_agent_conversation(session, conversation_id, task_description, result, session_id):
+    """Save agent conversation to database with proper session management"""
     try:
-        conversation = Conversation.query.filter_by(id=conversation_id, session_id=session_id).first()
+        # Use the injected session from decorator
+        conversation = session.query(Conversation).filter_by(
+            id=conversation_id, 
+            session_id=session_id
+        ).first()
+        
         if not conversation:
+            logger.warning(f"Conversation {conversation_id} not found for session {session_id}")
             return
         
         # Create a message record for the task initiation
@@ -502,13 +541,30 @@ def _save_agent_conversation(conversation_id, task_description, result, session_
             message_id=f"agent_task_{result.get('task_id', 'unknown')}",
             role="user",
             content=f"Started multi-agent task: {task_description}",
-            model_used="multi-agent-executor"
+            model_used="multi-agent-executor",
+            message_metadata={
+                'task_id': result.get('task_id'),
+                'agent_roles': result.get('agents', [])
+            }
         )
-        db.session.add(message)
-        db.session.commit()
+        session.add(message)
+        
+        # Log the event
+        SystemLogOps.log_event_sync(
+            session,
+            event_type='agent_task_started',
+            event_source='agents_api',
+            message=f'Multi-agent task started: {task_description}',
+            session_id=session_id,
+            additional_data={
+                'conversation_id': conversation_id,
+                'task_id': result.get('task_id')
+            }
+        )
+        
     except Exception as e:
         logger.error(f"Failed to save agent conversation: {e}")
-        db.session.rollback()
+        raise  # Let decorator handle rollback
 
 
 @agents_bp.route('/analyze', methods=['POST'])

@@ -3,7 +3,7 @@
  * Integrates new agent capabilities and features into the existing UI
  */
 
-class AgentUIEnhancements {
+export class AgentUIEnhancements {
     constructor() {
         this.agentProfiles = {
             product_01: {
@@ -251,6 +251,9 @@ class AgentUIEnhancements {
                 header.appendChild(indicator);
             }
         });
+        
+        // Enhance sidebar nav dots with better status indication
+        this.enhanceNavDots();
     }
 
     addWorkflowTemplates() {
@@ -548,6 +551,145 @@ class AgentUIEnhancements {
         }, 30000);
     }
 
+    enhanceNavDots() {
+        // Enhance sidebar navigation dots with better status indication
+        document.querySelectorAll('.agent-nav-item').forEach(navItem => {
+            const agentId = this.extractAgentIdFromNavItem(navItem);
+            if (!agentId || navItem.querySelector('.enhanced-nav-dot')) return;
+            
+            // Remove existing status indicator if present
+            const existingStatus = navItem.querySelector('.status-indicator');
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+            
+            // Create enhanced nav dot
+            const enhancedDot = document.createElement('div');
+            enhancedDot.className = 'enhanced-nav-dot';
+            enhancedDot.id = `nav-dot-${agentId}`;
+            enhancedDot.style.cssText = `
+                position: relative;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #9ca3af;
+                margin-left: auto;
+                transition: all 0.3s ease;
+                border: 2px solid #f3f4f6;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            `;
+            
+            // Add pulse ring for active state
+            const pulseRing = document.createElement('div');
+            pulseRing.className = 'pulse-ring hidden';
+            pulseRing.style.cssText = `
+                position: absolute;
+                top: -2px;
+                left: -2px;
+                right: -2px;
+                bottom: -2px;
+                border: 2px solid transparent;
+                border-radius: 50%;
+                animation: pulseRing 2s infinite;
+            `;
+            
+            enhancedDot.appendChild(pulseRing);
+            navItem.appendChild(enhancedDot);
+            
+            // Store reference for status updates
+            enhancedDot.dataset.agentId = agentId;
+        });
+        
+        // Add styles for pulse animation
+        if (!document.querySelector('#nav-dot-styles')) {
+            const style = document.createElement('style');
+            style.id = 'nav-dot-styles';
+            style.textContent = `
+                @keyframes pulseRing {
+                    0% {
+                        transform: scale(0.8);
+                        border-color: currentColor;
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: scale(1.8);
+                        border-color: transparent;
+                        opacity: 0;
+                    }
+                }
+                
+                .enhanced-nav-dot.working {
+                    background: #fbbf24 !important;
+                    box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+                }
+                
+                .enhanced-nav-dot.working .pulse-ring {
+                    display: block !important;
+                    border-color: #fbbf24;
+                }
+                
+                .enhanced-nav-dot.completed {
+                    background: #10b981 !important;
+                    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+                }
+                
+                .enhanced-nav-dot.failed {
+                    background: #ef4444 !important;
+                    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+                }
+                
+                .enhanced-nav-dot.idle {
+                    background: #9ca3af !important;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    extractAgentIdFromNavItem(navItem) {
+        // Try to extract agent ID from various sources
+        if (navItem.id && navItem.id.startsWith('nav-')) {
+            return navItem.id.replace('nav-', '');
+        }
+        
+        if (navItem.dataset.agentId) {
+            return navItem.dataset.agentId;
+        }
+        
+        // Try to find from click handler or data attributes
+        const clickHandler = navItem.getAttribute('onclick');
+        if (clickHandler) {
+            const match = clickHandler.match(/['"]([^'"]+)['"]/); 
+            if (match) {
+                return match[1];
+            }
+        }
+        
+        return null;
+    }
+    
+    updateNavDotStatus(agentId, status) {
+        const navDot = document.getElementById(`nav-dot-${agentId}`);
+        if (!navDot) return;
+        
+        // Remove all status classes
+        navDot.classList.remove('working', 'completed', 'failed', 'idle');
+        
+        // Add new status class
+        navDot.classList.add(status);
+        
+        // Show/hide pulse ring
+        const pulseRing = navDot.querySelector('.pulse-ring');
+        if (pulseRing) {
+            if (status === 'working') {
+                pulseRing.classList.remove('hidden');
+            } else {
+                pulseRing.classList.add('hidden');
+            }
+        }
+    }
+
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = 'ui-notification';
@@ -600,7 +742,5 @@ if (document.readyState === 'loading') {
     window.agentUIEnhancements = new AgentUIEnhancements();
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = AgentUIEnhancements;
-}
+export default AgentUIEnhancements;
+//# sourceMappingURL=agent-enhancements.js.map

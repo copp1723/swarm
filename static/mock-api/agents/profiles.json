@@ -1,0 +1,49 @@
+{
+  "success": true,
+  "profiles": [
+    {
+      "role": "general_01",
+      "name": "General Assistant",
+      "description": "A helpful general-purpose assistant that can handle a wide variety of tasks",
+      "capabilities": [
+        "general assistance",
+        "task planning",
+        "problem solving",
+        "information analysis"
+      ],
+      "specialties": ["general"],
+      "tools": ["reasoning", "planning"],
+      "interaction_style": "conversational"
+    },
+    {
+      "role": "product_01",
+      "name": "Product Manager",
+      "description": "Product strategy and planning expert focused on requirements and roadmaps",
+      "capabilities": [
+        "product planning",
+        "requirements analysis",
+        "roadmap creation",
+        "stakeholder communication"
+      ],
+      "specialties": ["product"],
+      "tools": ["planning", "analysis"],
+      "interaction_style": "structured"
+    },
+    {
+      "role": "coding_01",
+      "name": "Software Developer",
+      "description": "Expert software developer specializing in code creation and debugging",
+      "capabilities": [
+        "code development",
+        "debugging",
+        "code review",
+        "architecture design"
+      ],
+      "specialties": ["development"],
+      "tools": ["coding", "debugging"],
+      "interaction_style": "technical"
+    }
+  ],
+  "total": 3
+}
+

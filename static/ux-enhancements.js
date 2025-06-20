@@ -313,28 +313,30 @@ function toggleTheme() {
 
 // Initialize loading states
 function initializeLoadingStates() {
-    // Intercept fetch to add loading states
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-        const url = args[0];
-        
-        // Add loading class to relevant elements
+    // Loading states are now handled by the API client
+    // The API client automatically manages loading indicators and error states
+    
+    // Add global loading indicator support
+    const loadingIndicators = document.querySelectorAll('.loading-indicator');
+    loadingIndicators.forEach(indicator => {
+        indicator.style.display = 'none';
+    });
+    
+    // Listen for API events if we want to add custom loading behavior
+    document.addEventListener('api-request-start', (event) => {
+        const { url } = event.detail;
         if (url.includes('/api/agents/chat/')) {
             const agentId = url.split('/').pop();
             const agentWindow = document.getElementById(agentId);
             agentWindow?.classList.add('loading');
         }
-        
-        try {
-            const response = await originalFetch.apply(this, args);
-            return response;
-        } finally {
-            // Remove loading classes
-            document.querySelectorAll('.loading').forEach(el => {
-                el.classList.remove('loading');
-            });
-        }
-    };
+    });
+    
+    document.addEventListener('api-request-end', () => {
+        document.querySelectorAll('.loading').forEach(el => {
+            el.classList.remove('loading');
+        });
+    });
 }
 
 // Enhance focus management
@@ -586,3 +588,4 @@ body.mouse-nav *:focus-visible {
 `;
 
 document.head.appendChild(styleSheet);
+//# sourceMappingURL=ux-enhancements.js.map

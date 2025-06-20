@@ -32,3 +32,4 @@ export function getAuthHeaders() {
     
     return headers;
 }
+//# sourceMappingURL=config.js.map

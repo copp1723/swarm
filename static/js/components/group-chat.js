@@ -586,3 +586,4 @@ export class GroupChat {
 export function startGroupChat(agents, initialMessage, workingDirectory) {
     return new GroupChat(agents, initialMessage, workingDirectory);
 }
+//# sourceMappingURL=group-chat.js.map

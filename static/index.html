@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/3.1.4/socket.io.min.js"></script>
     
     <!-- Application Styles -->
     <link rel="stylesheet" href="/static/css/main.css">
@@ -30,9 +30,9 @@
     <link rel="stylesheet" href="/static/ux-improvements.css">
     <link rel="stylesheet" href="/static/virtual-chat.css">
 </head>
-<body class="bg-gray-50 font-sans antialiased">
+<body class="bg-gray-50 dark:bg-gray-900 font-sans antialiased transition-colors">
     <!-- Mobile menu button -->
-    <button id="mobile-menu-btn" class="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg">
+    <button id="mobile-menu-btn" class="md:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg shadow-lg transition-colors">
         <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
 
@@ -67,13 +67,13 @@
     <!-- Main content area -->
     <main class="main-content">
         <!-- Header -->
-        <header class="bg-white shadow-sm border-b border-gray-200 px-8 py-4">
+        <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 transition-colors">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <h1 class="text-2xl font-bold text-gray-900">
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                         <span id="current-agent-name">Select an Agent</span>
                     </h1>
-                    <span id="current-agent-status" class="px-3 py-1 text-xs font-medium rounded-full"></span>
+                    <span id="current-agent-status" class="px-3 py-1 text-xs font-medium rounded-full hidden md:inline-flex"></span>
                 </div>
                 
                 <div class="flex items-center space-x-4">
@@ -83,6 +83,12 @@
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         <span class="ml-2 text-sm text-gray-700">Enhance Prompts</span>
                     </label>
+                    
+                    <!-- Dark Mode Toggle -->
+                    <button id="dark-mode-toggle" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Toggle dark mode">
+                        <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
+                        <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    </button>
                     
                     <!-- Multi-Agent Collaboration -->
                     <button id="open-collab-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
@@ -126,14 +132,8 @@
     <!-- Application Scripts -->
     <script type="module" src="/static/js/app.js"></script>
     
-    <!-- Legacy Scripts (to be removed after full migration) -->
-    <script src="/static/memory-ui.js" defer></script>
-    <script src="/static/ux-enhancements.js" defer></script>
-    <script src="/static/virtual-chat.js" defer></script>
-    <script src="/static/virtual-chat-integration.js" defer></script>
-    
     <!-- UI Enhancements -->
     <link rel="stylesheet" href="/static/css/ui-enhancements.css">
-    <script src="/static/js/ui-enhancements/agent-enhancements.js"></script>
+    <script type="module" src="/static/js/ui-enhancements/agent-enhancements.js"></script>
 </body>
 </html>
