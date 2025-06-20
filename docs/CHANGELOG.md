@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2024-12-20
+
+### Added - Deployment Hardening
+- **MCP Filesystem Configuration**: 
+  - `DISABLE_MCP_FILESYSTEM` environment variable for degraded mode operation
+  - `MCP_FILESYSTEM_ALLOWED_DIRS` for directory access control (default: `/app`)
+  - `MCP_FILESYSTEM_LOG_OPERATIONS` for comprehensive file operation auditing
+- **Render Cloud Platform Support**:
+  - Complete Render deployment guide with managed PostgreSQL and Redis
+  - Auto-deployment configuration with health checks at `/ready` endpoint
+  - Port standardization to `10000` for Render compatibility
+- **Performance Optimization**:
+  - `WEB_CONCURRENCY` environment variable for worker scaling control
+  - `ENABLE_CELERY` toggle for resource-constrained deployments
+  - Optimized resource allocation for Basic tier (1GB RAM, 0.5 CPU)
+- **Production Monitoring**:
+  - MCP filesystem status and operations monitoring endpoints
+  - File access logging for security auditing
+  - Enhanced health check system with degraded status support
+- **Email & Webhook Integration**:
+  - Day-one Mailgun configuration for agent email processing
+  - Webhook endpoint setup for external integrations
+  - Sentry error tracking integration
+
+### Changed
+- **Health Check Endpoint**: Updated from `/health` to `/ready` for better deployment compatibility
+- **Deployment Architecture**: Migrated from generic cloud deployment to Render-optimized setup
+- **Resource Management**: Implemented tiered resource allocation (free/basic/paid)
+- **Environment Configuration**: Simplified variable setup with auto-generated database/Redis URLs
+
+### Security
+- **Filesystem Access Control**: Configurable directory restrictions for agent file operations
+- **Operation Auditing**: Complete logging of file system access and modifications
+- **Production Secrets**: Secure environment variable management through Render dashboard
+- **CORS Configuration**: Dynamic origin configuration for deployment URLs
+
+### Performance
+- **Worker Concurrency**: Configurable based on available resources (2 for basic, 4+ for higher tiers)
+- **Database Pooling**: Optimized connection limits for shared database instances
+- **Celery Workers**: Optional background processing to save resources on lower tiers
+
+## [Previous Unreleased]
+
 ### Added
 - Centralized API response formatting utility (`utils/api_response.py`)
 - Centralized database connection manager (`utils/db_connection.py`)
