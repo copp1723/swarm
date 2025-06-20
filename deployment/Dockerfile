@@ -24,7 +24,7 @@ COPY config/requirements/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt gunicorn
+    pip install --no-cache-dir -r requirements.txt gunicorn gevent
 
 # Production stage
 FROM python:3.11-slim
@@ -68,5 +68,5 @@ EXPOSE 5006
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5006/health || exit 1
 
-# Run the application with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5006", "--workers", "4", "app:app"]
+# Run the application with gunicorn using configuration file
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:application"]
