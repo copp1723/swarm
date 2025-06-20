@@ -4,6 +4,19 @@ flask-sqlalchemy==3.1.1
 flask-cors==4.0.0
 requests==2.31.0
 python-dotenv==1.0.0
+gitpython==3.1.43
+psutil==5.9.8
+pyyaml==6.0.1
+pydantic==2.5.2
+icalendar==5.0.12
+validators==0.28.1
+supervision==0.19.0
+docker==7.1.0
+pyparsing==3.1.2
+loguru==0.7.2
+lxml==5.2.2
+jinja2==3.1.4
+werkzeug==3.0.3
 
 # Production Server
 gunicorn==21.2.0
@@ -42,26 +55,17 @@ anthropic==0.25.0  # Updated from 0.7.8 - important updates
 colorama==0.4.6  # Colored terminal output
 python-dateutil==2.8.2
 pytz==2023.3
-pydantic==2.5.2
-psutil==5.9.8 # For system monitoring
-icalendar==5.0.12 # For calendar parsing
 beautifulsoup4==4.12.3 # For HTML parsing
-lxml==5.2.2 # For HTML parsing
-validators==0.28.1 # For input validation
-supervision==0.19.0 # Custom dependency
-docker==7.1.0 # For Docker interaction
 
 # Configuration & Validation
 jsonschema==4.20.0  # For config validation
-pyyaml==6.0.1  # For YAML support
 marshmallow==3.20.1
 
 # Retry & Resilience
-tenacity==8.2.3
-apprise==1.6.0
+tenacity==8.4.1
+apprise==1.7.6
 
 # Observability & Monitoring
-loguru==0.7.2
 sentry-sdk[flask,celery]==1.39.1  # For error tracking and monitoring
 
 # Security Enhancements
@@ -79,3 +83,6 @@ cryptography==41.0.7  # For secure operations
 # ujson==5.9.0  # Faster JSON parsing
 # orjson==3.9.10  # Even faster JSON parsing
 # msgpack==1.0.7  # Binary serialization
+watchdog==4.0.1
+more-itertools==8.12.0
+watchdog==4.0.1
