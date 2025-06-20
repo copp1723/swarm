@@ -176,6 +176,14 @@ def ping():
     """Simple ping endpoint for connectivity tests"""
     return "pong", 200
 
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon to prevent 404s"""
+    try:
+        return send_from_directory(app.static_folder, 'favicon.ico')
+    except:
+        # Return empty response if favicon doesn't exist
+        return '', 204
 
 # Service lifecycle manager
 lifecycle_manager = ServiceLifecycleManager()

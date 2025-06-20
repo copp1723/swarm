@@ -49,6 +49,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY --chown=mcp:mcp . .
 
+# Make startup script executable before switching users
+RUN chmod +x scripts/render_start.sh
+
 # Create necessary directories
 RUN mkdir -p /app/logs /app/uploads /app/instance && \
     chown -R mcp:mcp /app
@@ -61,12 +64,12 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.local/bin:${PATH}"
 
-# Expose port
-EXPOSE 5006
+# Expose port (Render will assign the actual port via PORT env var)
+EXPOSE $PORT
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5006/health || exit 1
+# Health check - use PORT env var for dynamic port
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
 
-# Run the application with gunicorn using configuration file
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:application"]
+# Run the application with the startup script
+CMD ["./scripts/render_start.sh"]

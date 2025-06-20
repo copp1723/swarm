@@ -4,16 +4,16 @@ Gunicorn configuration for MCP Executive with SocketIO support
 
 import os
 
-# Server socket
-bind = f"0.0.0.0:{os.environ.get('PORT', 5006)}"
+# Server socket - Render requires binding to 0.0.0.0 and the PORT env var
+bind = f"0.0.0.0:{os.environ.get('PORT', 10000)}"
 backlog = 2048
 
-# Worker processes
-workers = int(os.environ.get('WEB_CONCURRENCY', 4))
+# Worker processes - Use fewer workers for Render's resource constraints
+workers = int(os.environ.get('WEB_CONCURRENCY', 1))
 worker_class = "gevent"  # Required for SocketIO
 worker_connections = 1000
-timeout = 30
-keepalive = 2
+timeout = 60  # Increased timeout for Render
+keepalive = 5
 
 # Restart workers after this many requests, to prevent memory leaks
 max_requests = 1000

@@ -8,14 +8,18 @@ import sys
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(__file__))
 
-# Import the Flask app
+# Import the Flask app and SocketIO
 from app import app, socketio
 
-# For SocketIO support with gunicorn
+# For SocketIO support with gunicorn, expose the SocketIO WSGI application
+# This ensures WebSocket functionality works properly in production
 application = socketio
 
-# Fallback to regular Flask app if SocketIO has issues
+# Ensure the Flask app is also available for compatibility
+flask_app = app
+
 if __name__ == "__main__":
-    # Development mode
-    socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5006)))
+    # Development mode - use SocketIO.run for WebSocket support
+    port = int(os.environ.get('PORT', 5006))
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
 
