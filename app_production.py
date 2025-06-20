@@ -146,8 +146,16 @@ def _register_error_handlers(app):
         logger.error(f"Unhandled exception: {error}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred'}), 500
 
-# Production routes
+# Create the application instance before defining routes
+app = None
 
+def get_app():
+    global app
+    if app is None:
+        app = create_production_app()
+    return app
+
+# Production routes
 @app.route('/health')
 def health_check():
     """Comprehensive health check endpoint"""
@@ -218,6 +226,36 @@ def metrics():
             'recent_errors': recent_errors
         }
     })
+
+@app.route('/ready')
+def ready_check():
+    """Render-compatible readiness check endpoint"""
+    try:
+        # Basic health check
+        db_manager = get_production_db()
+        db_health = db_manager.health_check()
+        
+        # Check if core services are available
+        ready = db_health.get('postgres', {}).get('status') == 'healthy'
+        
+        status_code = 200 if ready else 503
+        
+        return jsonify({
+            'status': 'ready' if ready else 'not_ready',
+            'services': {
+                'database': ready,
+                'application': True
+            },
+            'port': os.environ.get('PORT', '10000')
+        }), status_code
+        
+    except Exception as e:
+        logger.error(f"Ready check failed: {e}")
+        return jsonify({
+            'status': 'not_ready',
+            'error': str(e),
+            'port': os.environ.get('PORT', '10000')
+        }), 503
 
 # Create the application
 app = create_production_app()
