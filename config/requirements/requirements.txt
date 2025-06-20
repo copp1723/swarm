@@ -70,6 +70,7 @@ sentry-sdk[flask,celery]==1.39.1  # For error tracking and monitoring
 
 # Security Enhancements
 python-jose[cryptography]==3.3.0  # For JWT handling
+PyJWT==2.8.0 # JWT implementation for python-jose
 cryptography==41.0.7  # For secure operations
 
 # Development Tools - Move to requirements-dev.txt
