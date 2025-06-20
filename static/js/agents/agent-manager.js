@@ -1,18 +1,34 @@
+// @ts-check
 // Agent Manager - handles all agent instances and coordination
 import { AGENTS, getAgentColor } from './agent-config.js';
 import { ChatInterface } from '../components/chat-interface.js';
 import { createElement, updateIcons } from '../utils/dom-helpers.js';
 import { getAuthHeaders } from '../config.js';
 
+/**
+ * Manages all agent instances and their coordination
+ * Handles sidebar navigation, chat interfaces, and agent state management
+ * Follows Core Development Rules for modular structure and dependency injection
+ */
 export class AgentManager {
     constructor() {
+        /** @type {Array<any>} List of available agents */
         this.agents = [];
+        /** @type {Map<string, ChatInterface>} Map of agent IDs to chat interfaces */
         this.chatInterfaces = new Map();
+        /** @type {string|null} Currently selected agent ID */
         this.currentAgentId = null;
+        /** @type {HTMLElement|null} Sidebar element */
         this.sidebar = null;
+        /** @type {HTMLElement|null} Main container element */
         this.container = null;
     }
 
+    /**
+     * Initialize the agent manager with async agent loading
+     * Sets up sidebar, containers, and event listeners
+     * @returns {Promise<void>}
+     */
     async init() {
         await this.loadAgents();
         this.initializeSidebar();
@@ -21,6 +37,11 @@ export class AgentManager {
         updateIcons();
     }
 
+    /**
+     * Load agents from API with fallback to hardcoded configuration
+     * Implements error handling and resilience patterns per Core Development Rules
+     * @returns {Promise<void>}
+     */
     async loadAgents() {
         try {
             const response = await fetch('/api/agents/list', {
@@ -29,19 +50,12 @@ export class AgentManager {
             const data = await response.json();
             
             if (data.success) {
-                // Transform API response to match UI format, map names to actual IDs
+                // Transform API response to match UI format, use backend-provided agent_id
                 this.agents = data.profiles.map(profile => {
-                    let id;
-                    if (profile.name === 'Product Agent') id = 'product_01';
-                    else if (profile.name === 'Coding Agent') id = 'coding_01';
-                    else if (profile.name === 'Bug Agent') id = 'bug_01';
-                    else if (profile.name === 'General Assistant') id = 'general_01';
-                    else id = profile.name.toLowerCase().replace(/\s+/g, '_') + '_01';
-                    
                     return {
-                        id: id,
+                        id: profile.agent_id || profile.id || profile.name.toLowerCase().replace(/\s+/g, '_') + '_01',
                         name: profile.name,
-                        role: profile.description,
+                        role: profile.description || profile.role,
                         icon: this.getIconForRole(profile.role),
                         color: this.getColorForRole(profile.role)
                     };
@@ -58,6 +72,11 @@ export class AgentManager {
         }
     }
 
+    /**
+     * Get Lucide icon name for agent role
+     * @param {string} role - The agent role
+     * @returns {string} Lucide icon name
+     */
     getIconForRole(role) {
         if (role === 'product') return 'package';
         if (role === 'developer') return 'code';
@@ -65,6 +84,11 @@ export class AgentManager {
         return 'message-circle';
     }
 
+    /**
+     * Get color scheme for agent role
+     * @param {string} role - The agent role
+     * @returns {string} Color name for UI theming
+     */
     getColorForRole(role) {
         if (role === 'product') return 'purple';
         if (role === 'developer') return 'green';
@@ -244,3 +268,4 @@ export class AgentManager {
         return this.agents;
     }
 }
+//# sourceMappingURL=agent-manager.js.map
