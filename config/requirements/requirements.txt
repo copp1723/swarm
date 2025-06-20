@@ -58,7 +58,7 @@ marshmallow==3.20.1
 
 # Retry & Resilience
 tenacity==8.2.3
-# apprise==1.6.0  # Commented out - unused dependency
+apprise==1.6.0
 
 # Observability & Monitoring
 loguru==0.7.2
