@@ -160,21 +160,23 @@ class DatabaseAccessLayer:
         if not self._initialized:
             self.initialize()
         
-        # Use circuit breaker for resilience
-        with _sync_circuit_breaker:
-            session = self._scoped_session()
-            try:
-                yield session
-                session.commit()
-            except IntegrityError:
-                session.rollback()
-                raise
-            except Exception:
-                session.rollback()
-                raise
-            finally:
-                session.close()
-                self._scoped_session.remove()
+        # Create session through circuit breaker for resilience
+        def create_session():
+            return self._scoped_session()
+        
+        session = _sync_circuit_breaker.call(create_session)
+        try:
+            yield session
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            raise
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+            self._scoped_session.remove()
     
     @asynccontextmanager
     async def get_async_session(self) -> AsyncSession:
@@ -182,18 +184,21 @@ class DatabaseAccessLayer:
         if not self._initialized:
             self.initialize()
         
-        # Use circuit breaker for resilience
-        with _async_circuit_breaker:
-            async with self._async_session_factory() as session:
-                try:
-                    yield session
-                    await session.commit()
-                except IntegrityError:
-                    await session.rollback()
-                    raise
-                except Exception:
-                    await session.rollback()
-                    raise
+        # Create session through circuit breaker for resilience
+        def create_session():
+            return self._async_session_factory()
+        
+        async_session_factory = await _async_circuit_breaker.call_async(lambda: self._async_session_factory)
+        async with async_session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                raise
+            except Exception:
+                await session.rollback()
+                raise
     
     def execute_sync(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Execute a function with a sync database session"""

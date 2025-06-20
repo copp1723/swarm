@@ -28,7 +28,11 @@ services:
       - key: MAILGUN_SIGNING_KEY
         sync: false  # Set in dashboard
       - key: SENTRY_DSN
-        sync: false # Set in dashboard
+        value: ""  # Optional - set in dashboard if needed
+      - key: NODE_ENV
+        value: production
+      - key: DISABLE_MCP_FILESYSTEM
+        value: "true"  # Disable MCP filesystem server if npx is not available
     autoDeploy: false
     healthCheckPath: /api/monitoring/simple-health
 

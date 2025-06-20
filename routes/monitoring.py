@@ -173,8 +173,9 @@ def check_database():
     """Check database connectivity"""
     try:
         from models.core import db
+        from sqlalchemy import text
         # Execute a simple query
-        db.session.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
         return True
     except Exception as e:
         logger.warning("Database check failed", error=str(e))

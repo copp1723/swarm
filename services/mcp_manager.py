@@ -54,7 +54,18 @@ class MCPServer:
             command = self.config.get("command", "")
             if not shutil.which(command):
                 self.error_message = f"Command '{command}' not found in PATH"
-                logger.error(f"MCP Server {self.name}: {self.error_message}")
+                logger.warning(f"MCP Server {self.name}: {self.error_message}")
+                
+                # Check if this server is disabled via environment variable
+                if os.getenv('DISABLE_MCP_FILESYSTEM', '').lower() == 'true' and 'filesystem' in self.name.lower():
+                    logger.info(f"MCP Server {self.name} disabled by environment variable")
+                    return False
+                    
+                # For production environments, allow graceful degradation
+                if os.getenv('FLASK_ENV') == 'production':
+                    logger.warning(f"Production environment: allowing graceful degradation for {self.name}")
+                    return False
+                
                 return False
             return True
         except Exception as e:

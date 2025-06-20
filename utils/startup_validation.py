@@ -66,13 +66,18 @@ class StartupValidator:
             'SECRET_KEY'
         ]
         
-        # Additional vars for production
+        # Additional optional vars for production (warnings only)
+        optional_production_vars = [
+            'SENTRY_DSN',
+            'MAILGUN_API_KEY',
+            'MAILGUN_DOMAIN'
+        ]
+        
+        # Check optional production vars separately
         if os.getenv('FLASK_ENV') == 'production':
-            required_vars.extend([
-                'SENTRY_DSN',
-                'MAILGUN_API_KEY',
-                'MAILGUN_DOMAIN'
-            ])
+            for var in optional_production_vars:
+                if not os.getenv(var):
+                    self.warnings.append(f"Optional production environment variable not set: {var}")
         
         all_present, missing = check_required_env_variables(required_vars)
         
@@ -154,12 +159,12 @@ class StartupValidator:
     def _check_database(self):
         """Check database connectivity"""
         try:
-            from sqlalchemy import create_engine
+            from sqlalchemy import create_engine, text
             db_url = os.getenv('DATABASE_URL')
             if db_url:
                 engine = create_engine(db_url)
                 with engine.connect() as conn:
-                    conn.execute("SELECT 1")
+                    conn.execute(text("SELECT 1"))
                 logger.info("Database connectivity check passed")
             else:
                 self.errors.append("DATABASE_URL not configured")
@@ -176,9 +181,15 @@ class StartupValidator:
                 r.ping()
                 logger.info("Redis connectivity check passed")
             else:
-                self.errors.append("REDIS_URL not configured")
+                if os.getenv('FLASK_ENV') == 'production':
+                    self.warnings.append("REDIS_URL not configured - some features may be limited")
+                else:
+                    self.errors.append("REDIS_URL not configured")
         except Exception as e:
-            self.errors.append(f"Redis connection failed: {e}")
+            if os.getenv('FLASK_ENV') == 'production':
+                self.warnings.append(f"Redis connection failed: {e} - falling back to in-memory cache")
+            else:
+                self.errors.append(f"Redis connection failed: {e}")
     
     def _report_results(self):
         """Report validation results"""
