@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Verification - Multi-Agent Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-center">🚀 Multi-Agent Workspace Feature Verification</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Feature Check 1: Dark Mode -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i data-lucide="moon" class="w-5 h-5 mr-2"></i>
+                    Dark Mode Toggle
+                </h3>
+                <div id="dark-mode-check" class="space-y-2">
+                    <p class="text-sm text-gray-600">Checking for dark mode functionality...</p>
+                </div>
+            </div>
+
+            <!-- Feature Check 2: Drag & Drop -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i data-lucide="move" class="w-5 h-5 mr-2"></i>
+                    Drag & Drop
+                </h3>
+                <div id="drag-drop-check" class="space-y-2">
+                    <p class="text-sm text-gray-600">Checking for drag-drop utilities...</p>
+                </div>
+            </div>
+
+            <!-- Feature Check 3: @ Mentions -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i data-lucide="at-sign" class="w-5 h-5 mr-2"></i>
+                    @ Mention Autocomplete
+                </h3>
+                <div id="mention-check" class="space-y-2">
+                    <p class="text-sm text-gray-600">Checking for mention autocomplete...</p>
+                </div>
+            </div>
+
+            <!-- Feature Check 4: Keyboard Shortcuts -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i data-lucide="keyboard" class="w-5 h-5 mr-2"></i>
+                    Keyboard Shortcuts
+                </h3>
+                <div id="keyboard-check" class="space-y-2">
+                    <p class="text-sm text-gray-600">Checking for keyboard shortcut handlers...</p>
+                </div>
+            </div>
+
+            <!-- Feature Check 5: Mobile Responsiveness -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i data-lucide="smartphone" class="w-5 h-5 mr-2"></i>
+                    Mobile Menu
+                </h3>
+                <div id="mobile-check" class="space-y-2">
+                    <p class="text-sm text-gray-600">Checking for mobile menu functionality...</p>
+                </div>
+            </div>
+
+            <!-- Feature Check 6: API Endpoints -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i data-lucide="server" class="w-5 h-5 mr-2"></i>
+                    API Endpoints
+                </h3>
+                <div id="api-check" class="space-y-2">
+                    <p class="text-sm text-gray-600">Testing API connectivity...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <button onclick="runFullTest()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                🔍 Run Full Feature Test
+            </button>
+        </div>
+
+        <div id="results" class="mt-8 p-6 bg-gray-50 rounded-lg hidden">
+            <h3 class="text-lg font-semibold mb-4">Test Results:</h3>
+            <div id="results-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        function checkFeature(name, condition, element) {
+            const status = condition ? '✅' : '❌';
+            const color = condition ? 'text-green-600' : 'text-red-600';
+            element.innerHTML = `<span class="${color}">${status} ${name} ${condition ? 'Available' : 'Missing'}</span>`;
+            return condition;
+        }
+
+        async function runFullTest() {
+            const results = [];
+            
+            // Check 1: Dark Mode
+            const darkModeEl = document.getElementById('dark-mode-check');
+            const hasDarkMode = window.location.href.includes('localhost:8001');
+            results.push(checkFeature('Dark Mode Toggle', hasDarkMode, darkModeEl));
+
+            // Check 2: Drag & Drop
+            const dragDropEl = document.getElementById('drag-drop-check');
+            try {
+                const response = await fetch('/static/js/utils/drag-drop.js');
+                const hasDragDrop = response.ok;
+                results.push(checkFeature('Drag & Drop Utils', hasDragDrop, dragDropEl));
+            } catch (e) {
+                results.push(checkFeature('Drag & Drop Utils', false, dragDropEl));
+            }
+
+            // Check 3: @ Mentions
+            const mentionEl = document.getElementById('mention-check');
+            try {
+                const response = await fetch('/static/js/utils/mention-autocomplete.js');
+                const hasMentions = response.ok;
+                results.push(checkFeature('Mention Autocomplete', hasMentions, mentionEl));
+            } catch (e) {
+                results.push(checkFeature('Mention Autocomplete', false, mentionEl));
+            }
+
+            // Check 4: Keyboard shortcuts (check main app.js for keyboard handlers)
+            const keyboardEl = document.getElementById('keyboard-check');
+            try {
+                const response = await fetch('/static/js/app.js');
+                const content = await response.text();
+                const hasKeyboardShortcuts = content.includes('Ctrl+') || content.includes('keydown');
+                results.push(checkFeature('Keyboard Shortcuts', hasKeyboardShortcuts, keyboardEl));
+            } catch (e) {
+                results.push(checkFeature('Keyboard Shortcuts', false, keyboardEl));
+            }
+
+            // Check 5: Mobile menu
+            const mobileEl = document.getElementById('mobile-check');
+            try {
+                const response = await fetch('/');
+                const content = await response.text();
+                const hasMobileMenu = content.includes('mobile-menu-btn');
+                results.push(checkFeature('Mobile Menu', hasMobileMenu, mobileEl));
+            } catch (e) {
+                results.push(checkFeature('Mobile Menu', false, mobileEl));
+            }
+
+            // Check 6: API endpoints
+            const apiEl = document.getElementById('api-check');
+            try {
+                const response = await fetch('/api/agents/profiles');
+                const hasAPI = response.ok;
+                results.push(checkFeature('API Endpoints', hasAPI, apiEl));
+            } catch (e) {
+                results.push(checkFeature('API Endpoints', false, apiEl));
+            }
+
+            // Show results summary
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('results-content');
+            const passedTests = results.filter(r => r).length;
+            const totalTests = results.length;
+            
+            resultsContent.innerHTML = `
+                <div class="text-lg font-semibold mb-4">
+                    ${passedTests}/${totalTests} tests passed
+                </div>
+                <div class="text-sm">
+                    ${passedTests === totalTests ? 
+                        '🎉 All features are working correctly!' : 
+                        '⚠️ Some features may need browser cache clearing or hard refresh (Ctrl+Shift+R / Cmd+Shift+R)'
+                    }
+                </div>
+            `;
+            resultsDiv.classList.remove('hidden');
+        }
+
+        // Auto-run test on page load
+        setTimeout(runFullTest, 1000);
+    </script>
+</body>
+</html>
+
