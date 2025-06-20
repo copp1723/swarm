@@ -1,0 +1,207 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: mcp-executive
+  CONTAINER_NAME: mcp-test-container
+  TEST_PORT: 10000
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        echo "Building Docker image..."
+        docker build \
+          --file deployment/Dockerfile \
+          --tag ${{ env.DOCKER_IMAGE }}:test \
+          --build-arg INSTALL_DEV=false \
+          .
+        echo "✅ Docker image built successfully"
+
+    - name: Start container
+      run: |
+        echo "Starting container..."
+        docker run -d \
+          --name ${{ env.CONTAINER_NAME }} \
+          --publish ${{ env.TEST_PORT }}:10000 \
+          --env FLASK_ENV=production \
+          --env DATABASE_URL=sqlite:///test.db \
+          --env REDIS_URL=redis://localhost:6379 \
+          --env ENABLE_CELERY=false \
+          --env SECRET_KEY=test-secret-key-for-ci \
+          --env PORT=10000 \
+          --health-cmd="curl -f http://localhost:10000/api/monitoring/simple-health || exit 1" \
+          --health-interval=10s \
+          --health-timeout=5s \
+          --health-retries=3 \
+          --health-start-period=30s \
+          ${{ env.DOCKER_IMAGE }}:test
+        echo "✅ Container started"
+
+    - name: Wait for container to be healthy
+      run: |
+        echo "Waiting for container to be healthy..."
+        timeout=180  # 3 minutes timeout
+        interval=5
+        elapsed=0
+        
+        while [ $elapsed -lt $timeout ]; do
+          health_status=$(docker inspect --format='{{.State.Health.Status}}' ${{ env.CONTAINER_NAME }})
+          echo "Container health status: $health_status (${elapsed}s elapsed)"
+          
+          if [ "$health_status" = "healthy" ]; then
+            echo "✅ Container is healthy"
+            break
+          elif [ "$health_status" = "unhealthy" ]; then
+            echo "❌ Container is unhealthy"
+            docker logs ${{ env.CONTAINER_NAME }}
+            exit 1
+          fi
+          
+          sleep $interval
+          elapsed=$((elapsed + interval))
+        done
+        
+        if [ $elapsed -ge $timeout ]; then
+          echo "❌ Timeout waiting for container to be healthy"
+          docker logs ${{ env.CONTAINER_NAME }}
+          exit 1
+        fi
+
+    - name: Test readiness endpoint
+      run: |
+        echo "Testing /ready endpoint..."
+        
+        # Test the readiness endpoint
+        response=$(curl -s -w "%{http_code}" -o /tmp/ready_response.json \
+          http://localhost:${{ env.TEST_PORT }}/api/monitoring/ready)
+        
+        echo "Response status: $response"
+        echo "Response body:"
+        cat /tmp/ready_response.json | jq '.' || cat /tmp/ready_response.json
+        
+        # Check if the status code is 200 or 503 (both are acceptable for readiness)
+        if [ "$response" = "200" ] || [ "$response" = "503" ]; then
+          echo "✅ Readiness endpoint responded correctly"
+        else
+          echo "❌ Readiness endpoint failed with status: $response"
+          exit 1
+        fi
+
+    - name: Test simple health endpoint  
+      run: |
+        echo "Testing /simple-health endpoint..."
+        
+        response=$(curl -s -w "%{http_code}" -o /tmp/health_response.json \
+          http://localhost:${{ env.TEST_PORT }}/api/monitoring/simple-health)
+        
+        echo "Response status: $response"
+        echo "Response body:"
+        cat /tmp/health_response.json | jq '.' || cat /tmp/health_response.json
+        
+        if [ "$response" = "200" ]; then
+          # Verify the response contains expected fields
+          status=$(cat /tmp/health_response.json | jq -r '.status')
+          if [ "$status" = "healthy" ]; then
+            echo "✅ Simple health endpoint is working correctly"
+          else
+            echo "❌ Health endpoint returned unexpected status: $status"
+            exit 1
+          fi
+        else
+          echo "❌ Simple health endpoint failed with status: $response"
+          exit 1
+        fi
+
+    - name: Test basic API endpoint
+      run: |
+        echo "Testing basic API functionality..."
+        
+        # Test a basic API endpoint (monitoring metrics)
+        response=$(curl -s -w "%{http_code}" -o /tmp/metrics_response.json \
+          http://localhost:${{ env.TEST_PORT }}/api/monitoring/metrics)
+        
+        echo "Response status: $response"
+        echo "Response body:"
+        cat /tmp/metrics_response.json | jq '.' || cat /tmp/metrics_response.json
+        
+        if [ "$response" = "200" ]; then
+          # Verify the response contains expected fields
+          status=$(cat /tmp/metrics_response.json | jq -r '.status')
+          if [ "$status" = "success" ]; then
+            echo "✅ Basic API endpoint is working correctly"
+          else
+            echo "❌ API endpoint returned unexpected status: $status"
+            exit 1
+          fi
+        else
+          echo "❌ Basic API endpoint failed with status: $response"
+          exit 1
+        fi
+
+    - name: Test container resource usage
+      run: |
+        echo "Checking container resource usage..."
+        
+        # Get container stats
+        docker stats ${{ env.CONTAINER_NAME }} --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}"
+        
+        # Check if container is still running
+        if docker ps | grep -q ${{ env.CONTAINER_NAME }}; then
+          echo "✅ Container is still running after tests"
+        else
+          echo "❌ Container stopped unexpectedly"
+          docker logs ${{ env.CONTAINER_NAME }}
+          exit 1
+        fi
+
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "Cleaning up..."
+        
+        # Show container logs for debugging if needed
+        echo "=== Container Logs ==="
+        docker logs ${{ env.CONTAINER_NAME }} || true
+        
+        # Stop and remove container
+        docker stop ${{ env.CONTAINER_NAME }} || true
+        docker rm ${{ env.CONTAINER_NAME }} || true
+        
+        # Remove image
+        docker rmi ${{ env.DOCKER_IMAGE }}:test || true
+        
+        echo "✅ Cleanup completed"
+
+    - name: Verify cleanup
+      if: always()
+      run: |
+        echo "Verifying cleanup..."
+        
+        # Check that container is removed
+        if docker ps -a | grep -q ${{ env.CONTAINER_NAME }}; then
+          echo "⚠️  Container still exists after cleanup"
+        else
+          echo "✅ Container successfully removed"
+        fi
+        
+        # Check Docker system status
+        echo "Docker system df:"
+        docker system df
+
