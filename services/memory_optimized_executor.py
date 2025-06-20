@@ -33,8 +33,8 @@ class MemoryOptimizedMultiAgentExecutor(BaseExecutor):
         self.max_active_tasks = 50  # Limit concurrent tasks
         self.task_cleanup_interval = 300  # 5 minutes
         
-        # Use persistent storage for chat history
-        self.chat_storage = get_chat_history_storage()
+        # Use persistent storage for chat history (lazy initialization)
+        self._chat_storage = None
         
         # Memory monitoring
         self.memory_threshold_mb = 500  # Trigger cleanup if over 500MB
@@ -46,6 +46,13 @@ class MemoryOptimizedMultiAgentExecutor(BaseExecutor):
         
         # Start background cleanup task
         self._start_cleanup_task()
+    
+    @property
+    def chat_storage(self):
+        """Lazy initialization of chat storage"""
+        if self._chat_storage is None:
+            self._chat_storage = get_chat_history_storage()
+        return self._chat_storage
     
     def _start_cleanup_task(self):
         """Start background task for memory cleanup"""

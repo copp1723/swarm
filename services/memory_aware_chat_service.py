@@ -25,8 +25,8 @@ class MemoryAwareChatService:
     """
     
     def __init__(self):
-        # Storage backends
-        self.storage = get_chat_history_storage()
+        # Storage backends (lazy initialization)
+        self._storage = None
         self.memory_optimizer = get_memory_optimizer()
         
         # Memory-efficient caches
@@ -46,6 +46,13 @@ class MemoryAwareChatService:
         # Background-task state flags (started later in async context)
         self._background_task_started: bool = False
         self._cleanup_task: Optional[asyncio.Task] = None
+    
+    @property
+    def storage(self):
+        """Lazy initialization of chat history storage"""
+        if self._storage is None:
+            self._storage = get_chat_history_storage()
+        return self._storage
     
     # ------------------------------------------------------------------ #
     # Async-aware lifecycle helpers

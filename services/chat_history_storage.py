@@ -21,7 +21,24 @@ class ChatHistoryStorage:
         self.max_memory_conversations = max_memory_conversations
         self._memory_cache = OrderedDict()  # LRU cache
         self._lock = threading.Lock()
+        self._table_initialized = False
+    
+    def _ensure_table_initialized(self):
+        """Ensure database table is initialized when needed"""
+        if self._table_initialized:
+            return
+        
+        # Only initialize if we have a Flask app context
+        try:
+            from flask import has_app_context
+            if not has_app_context():
+                logger.warning("Cannot initialize chat history table without Flask app context")
+                return
+        except ImportError:
+            pass
+        
         self._init_db_table()
+        self._table_initialized = True
     
     def _init_db_table(self):
         """Create chat history table if it doesn't exist"""
@@ -55,6 +72,7 @@ class ChatHistoryStorage:
     
     def add_message(self, agent_id: str, role: str, content: str, metadata: Optional[Dict] = None):
         """Add a message to chat history"""
+        self._ensure_table_initialized()
         message_id = f"{agent_id}_{int(datetime.now().timestamp() * 1000)}"
         
         # Add to memory cache
@@ -104,6 +122,7 @@ class ChatHistoryStorage:
     
     def get_history(self, agent_id: str, limit: int = 100) -> List[Dict]:
         """Get chat history for an agent"""
+        self._ensure_table_initialized()
         # Check memory cache first
         with self._lock:
             if agent_id in self._memory_cache:
@@ -150,6 +169,7 @@ class ChatHistoryStorage:
     
     def clear_history(self, agent_id: str):
         """Clear chat history for an agent"""
+        self._ensure_table_initialized()
         # Clear from memory
         with self._lock:
             if agent_id in self._memory_cache:
@@ -182,6 +202,7 @@ class ChatHistoryStorage:
     
     def cleanup_old_messages(self, days: int = 30):
         """Clean up old messages from database"""
+        self._ensure_table_initialized()
         try:
             with db.engine.connect() as conn:
                 result = conn.execute(text("""
