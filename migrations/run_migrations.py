@@ -37,10 +37,13 @@ def run_migrations():
             else:
                 logger.info("Detected SQLite database")
                 # SQLite-specific optimizations
-                db.engine.execute("PRAGMA journal_mode=WAL")
-                db.engine.execute("PRAGMA synchronous=NORMAL")
-                db.engine.execute("PRAGMA cache_size=10000")
-                db.engine.execute("PRAGMA temp_store=MEMORY")
+                from sqlalchemy import text
+                with db.engine.connect() as conn:
+                    conn.execute(text("PRAGMA journal_mode=WAL"))
+                    conn.execute(text("PRAGMA synchronous=NORMAL"))
+                    conn.execute(text("PRAGMA cache_size=10000"))
+                    conn.execute(text("PRAGMA temp_store=MEMORY"))
+                    conn.commit()
             
             # Verify tables were created
             from models.task_storage import CollaborationTask, ConversationHistory, AuditLog
