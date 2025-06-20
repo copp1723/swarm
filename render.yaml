@@ -33,8 +33,12 @@ services:
         value: production
       - key: DISABLE_MCP_FILESYSTEM
         value: "false"  # Enable MCP filesystem server for full functionality
+      - key: WEB_CONCURRENCY
+        value: "2"  # Number of gunicorn workers
+      - key: PORT
+        value: "10000"  # Explicit port setting
     autoDeploy: false
-    healthCheckPath: /api/monitoring/ready
+    healthCheckPath: /health
 
   # Background Worker
   - type: worker

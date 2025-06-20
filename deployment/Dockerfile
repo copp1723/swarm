@@ -53,8 +53,9 @@ COPY --chown=mcp:mcp . .
 # Install MCP filesystem server
 RUN npm install -g @modelcontextprotocol/server-filesystem@latest
 
-# Create necessary directories
+# Create necessary directories and make startup script executable
 RUN mkdir -p /app/logs /app/uploads /app/instance && \
+    chmod +x scripts/render_production_start.sh && \
     chown -R mcp:mcp /app
 
 # Switch to non-root user
@@ -70,7 +71,7 @@ EXPOSE 10000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-10000}/ready || exit 1
+    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
 
 # Run the application
-CMD ["gunicorn", "-w", "${WEB_CONCURRENCY:-2}", "--worker-class", "gevent", "--bind", "0.0.0.0:${PORT:-10000}", "--timeout", "120", "app_production:app"]
+CMD ["scripts/render_production_start.sh"]

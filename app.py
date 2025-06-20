@@ -505,8 +505,10 @@ def initialize_app():
 initialize_app()
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5006))
+    port = int(os.environ.get('PORT', 10000))  # Default to 10000 to match Render's expected port
     debug_mode = os.environ.get('FLASK_ENV', 'production').lower() != 'production'
+    
+    logger.info(f"Starting MCP Executive on 0.0.0.0:{port} (debug={debug_mode})")
     
     # Use SocketIO run method instead of Flask run for WebSocket support
     socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode)

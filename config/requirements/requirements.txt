@@ -40,8 +40,9 @@ redis==5.0.1
 # Real-time Communication
 flask-socketio==5.3.6
 python-socketio==5.11.1  # Updated from 5.11.0
-# Replace eventlet with gevent due to security vulnerability
-gevent==23.9.1  # Replaced eventlet==0.33.3
+# Both eventlet and gevent for SocketIO compatibility
+eventlet==0.35.2  # Latest version with security fixes
+gevent==23.9.1
 gevent-websocket==0.10.1
 
 # Memory Integration

@@ -217,21 +217,48 @@ class DatabaseAccessLayer:
         """
         @functools.wraps(sync_func)
         def wrapper(*args, **kwargs):
-            loop = None
             try:
+                # Check if there's already a running event loop
                 loop = asyncio.get_running_loop()
-            except RuntimeError:
-                # No running loop, create one
-                return asyncio.run(sync_func(*args, **kwargs))
-            
-            if loop.is_running():
-                # Run in thread pool to avoid blocking
+                
+                # If we're in an async context with a running loop,
+                # create a new loop in a thread to avoid conflicts
+                def run_in_new_loop():
+                    # Create a new event loop for this thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(sync_func(*args, **kwargs))
+                    finally:
+                        new_loop.close()
+                        asyncio.set_event_loop(None)
+                
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, sync_func(*args, **kwargs))
+                    future = executor.submit(run_in_new_loop)
                     return future.result()
-            else:
-                return loop.run_until_complete(sync_func(*args, **kwargs))
+                    
+            except RuntimeError:
+                # No running loop, we can safely create and run one
+                try:
+                    return asyncio.run(sync_func(*args, **kwargs))
+                except RuntimeError as e:
+                    if "cannot be called from a running event loop" in str(e):
+                        # Fallback: run in a new thread with a new loop
+                        def run_in_new_loop():
+                            new_loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(new_loop)
+                            try:
+                                return new_loop.run_until_complete(sync_func(*args, **kwargs))
+                            finally:
+                                new_loop.close()
+                                asyncio.set_event_loop(None)
+                        
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(run_in_new_loop)
+                            return future.result()
+                    else:
+                        raise
         
         return wrapper
     

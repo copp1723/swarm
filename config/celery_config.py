@@ -9,9 +9,21 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path='.env')
 
 # Redis configuration
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', REDIS_URL)
-CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', REDIS_URL)
+def get_redis_url(db_number=0):
+    """Get Redis URL with proper database number handling"""
+    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    
+    # If URL already has a database number, replace it
+    # Otherwise append the database number
+    if redis_url.endswith(('/0', '/1', '/2', '/3', '/4', '/5', '/6', '/7', '/8', '/9')):
+        # Remove existing database number
+        redis_url = redis_url.rsplit('/', 1)[0]
+    
+    return f"{redis_url}/{db_number}"
+
+REDIS_URL = get_redis_url(0)  # Main Redis database
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', get_redis_url(1))  # Celery broker on db 1
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', get_redis_url(1))  # Celery results on db 1
 
 def make_celery(app=None):
     """Create Celery instance with Flask app context"""

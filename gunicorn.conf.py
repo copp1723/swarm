@@ -6,13 +6,14 @@ import os
 
 # Server socket - Render requires binding to 0.0.0.0 and the PORT env var
 bind = f"0.0.0.0:{os.environ.get('PORT', 10000)}"
+wsproto = "uvloop"
 backlog = 2048
 
 # Worker processes - Use fewer workers for Render's resource constraints
-workers = int(os.environ.get('WEB_CONCURRENCY', 1))
-worker_class = "gevent"  # Required for SocketIO
+workers = int(os.environ.get('WEB_CONCURRENCY', 2))
+worker_class = "gevent"  # Use gevent for better performance and compatibility
 worker_connections = 1000
-timeout = 60  # Increased timeout for Render
+timeout = 120  # Increased timeout for long-running operations
 keepalive = 5
 
 # Restart workers after this many requests, to prevent memory leaks
@@ -41,5 +42,5 @@ keyfile = None
 certfile = None
 
 # Application
-wsgi_app = "wsgi:application"
+wsgi_app = "wsgi:app"
 
