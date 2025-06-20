@@ -7,9 +7,14 @@ RUN apt-get update && apt-get install -y \
     g++ \
     git \
     curl \
+    gnupg \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js and npm for npx
+RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
 # Set working directory
 WORKDIR /app
@@ -19,7 +24,7 @@ COPY config/requirements/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Production stage
 FROM python:3.11-slim
@@ -28,6 +33,7 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     libpq5 \
     curl \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -62,5 +68,5 @@ EXPOSE 5006
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5006/health || exit 1
 
-# Run the application
-CMD ["python", "app.py"]
+# Run the application with gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5006", "--workers", "4", "app:app"]
