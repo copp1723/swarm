@@ -133,3 +133,6 @@ old/
 celery.log
 flask_app.log
 app.log
+# Environment files with sensitive data
+.render.env
+CORRECTED_RENDER_ENV.txt
