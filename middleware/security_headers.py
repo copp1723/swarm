@@ -2,9 +2,11 @@
 Security Headers Middleware
 Adds security headers to all HTTP responses
 """
-from flask import Flask, Response
+from flask import Flask, Response, g, request
 from typing import Dict, Optional, Callable
 import os
+import secrets
+import base64
 
 
 class SecurityHeadersMiddleware:
@@ -31,14 +33,16 @@ class SecurityHeadersMiddleware:
         },
         'production': {
             'default-src': ["'self'"],
-            'script-src': ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://unpkg.com", "https://cdn.socket.io"],
-            'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.tailwindcss.com"],
-            'font-src': ["'self'", "https://fonts.gstatic.com"],
-            'img-src': ["'self'", "data:", "https:"],
-            'connect-src': ["'self'", "https://api.openrouter.ai", "wss:", "ws:"],
+            'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.tailwindcss.com", "https://unpkg.com", "https://cdn.socket.io", "https://cdnjs.cloudflare.com"],
+            'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.tailwindcss.com", "https://unpkg.com"],
+            'font-src': ["'self'", "https://fonts.gstatic.com", "data:"],
+            'img-src': ["'self'", "data:", "https:", "blob:"],
+            'connect-src': ["'self'", "https://api.openrouter.ai", "wss:", "ws:", "https:"],
             'frame-ancestors': ["'none'"],
             'base-uri': ["'self'"],
             'form-action': ["'self'"],
+            'worker-src': ["'self'", "blob:"],
+            'child-src': ["'self'", "blob:"]
         }
     }
     
@@ -72,6 +76,14 @@ class SecurityHeadersMiddleware:
     
     def add_security_headers(self, response: Response) -> Response:
         """Add security headers to the response"""
+        # Check if CSP is disabled via environment variable
+        if os.getenv('DISABLE_CSP', '').lower() in ('true', '1', 'yes'):
+            # Skip CSP but add other security headers
+            for header, value in self.DEFAULT_HEADERS.items():
+                response.headers[header] = value
+            for header, value in self.custom_headers.items():
+                response.headers[header] = value
+            return response
         # Add default headers
         for header, value in self.DEFAULT_HEADERS.items():
             response.headers[header] = value

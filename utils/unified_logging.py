@@ -94,7 +94,7 @@ def setup_logging(
     """
     # Get or create logger
     logger = logging.getLogger(name)
-    logger.setLevel(getattr(logging, level.upper() if isinstance(level, str) else level))
+    logger.setLevel(getattr(logging, str(level).upper() if isinstance(level, str) else level))
     logger.propagate = propagate
     
     # Remove existing handlers to avoid duplicates
@@ -103,7 +103,7 @@ def setup_logging(
     # Default format
     if not format_string:
         if use_json:
-            formatter = StructuredFormatter()
+            formatter: Union[StructuredFormatter, logging.Formatter] = StructuredFormatter()
         else:
             format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             formatter = ColoredFormatter(format_string) if use_colors and console else logging.Formatter(format_string)

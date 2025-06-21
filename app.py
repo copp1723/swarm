@@ -75,8 +75,10 @@ CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "expose_heade
 env = os.getenv("FLASK_ENV", "production").lower()
 init_security_headers(
     app,
-    hsts_enabled=(env == "production"),
-    hsts_preload=(env == "production"),
+    hsts_enabled=os.getenv('ENABLE_HSTS', 'true').lower() == 'true' and env == "production",
+    hsts_max_age=int(os.getenv('HSTS_MAX_AGE', '31536000')),
+    hsts_include_subdomains=os.getenv('HSTS_INCLUDE_SUBDOMAINS', 'true').lower() == 'true',
+    hsts_preload=os.getenv('HSTS_PRELOAD', 'false').lower() == 'true' and env == "production",
 )
 
 # Initialize logging with Flask app for Sentry integration

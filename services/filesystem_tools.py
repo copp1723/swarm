@@ -12,11 +12,38 @@ from utils.error_catalog import ErrorCodes, format_error_response
 logger = logging.getLogger(__name__)
 
 class FilesystemTools:
-    """Direct filesystem access tools for agents"""
+    """Direct filesystem access tools for agents.
+
+    The base directory is determined in the following order:
+    1. An explicit ``base_path`` argument.
+    2. The ``MCP_FILESYSTEM_ROOT`` environment variable.
+    3. The current working directory (safe default).
+
+    Restricting all file operations to a configurable root path
+    eliminates the need for developer-specific absolute paths and
+    makes the application portable across environments.
+    """
     
-    def __init__(self, base_path: str = "/Users/copp1723/Desktop"):
-        self.base_path = Path(base_path)
-        logger.info(f"FilesystemTools initialized with base path: {self.base_path}")
+    def __init__(self, base_path: Optional[str] = None):
+        # Determine root directory
+        if base_path is None:
+            base_path = os.environ.get("MCP_FILESYSTEM_ROOT", os.getcwd())
+
+        # Resolve to an absolute path for safety / normalisation
+        self.base_path: Path = Path(base_path).expanduser().resolve()
+
+        if not self.base_path.exists():
+            # It is preferable to fail loudly so mis-configuration is obvious
+            logger.warning(
+                "FilesystemTools base path %s does not exist; attempting to create.",
+                self.base_path,
+            )
+            try:
+                self.base_path.mkdir(parents=True, exist_ok=True)
+            except Exception as exc:
+                logger.error("Unable to create base path %s: %s", self.base_path, exc)
+
+        logger.info("FilesystemTools initialized with base path: %s", self.base_path)
     
     def list_directory(self, path: str = ".") -> Dict[str, Any]:
         """List contents of a directory"""

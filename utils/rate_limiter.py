@@ -1,12 +1,17 @@
-"""Rate limiting utilities for SWARM API endpoints"""
+"""Production-ready rate limiting utilities for SWARM API endpoints"""
 import time
 import json
+import os
+import redis
+import asyncio
 from functools import wraps
-from flask import request, jsonify, g
-from typing import Dict, Optional, Tuple
-import logging
+from flask import request, jsonify, g, current_app
+from typing import Dict, Optional, Tuple, Callable, Any, Union
+from datetime import datetime, timedelta
 
-logger = logging.getLogger(__name__)
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class RateLimiter:
@@ -33,7 +38,7 @@ class RateLimiter:
                     del self.requests[key]
             self.last_cleanup = current_time
     
-    def check_rate_limit(self, key: str, limit: int, window: int) -> Tuple[bool, Dict[str, any]]:
+    def check_rate_limit(self, key: str, limit: int, window: int) -> Tuple[bool, Dict[str, Any]]:
         """
         Check if request is within rate limit
         
@@ -97,7 +102,7 @@ rate_limiter = RateLimiter()
 
 def rate_limit(requests_per_minute: int = 60, 
                requests_per_hour: int = None,
-               key_func: Optional[callable] = None):
+               key_func: Optional[Callable] = None):
     """
     Rate limiting decorator
     
@@ -197,7 +202,7 @@ class RedisRateLimiter:
     def __init__(self, redis_client):
         self.redis = redis_client
     
-    async def check_rate_limit(self, key: str, limit: int, window: int) -> Tuple[bool, Dict[str, any]]:
+    async def check_rate_limit(self, key: str, limit: int, window: int) -> Tuple[bool, Dict[str, Any]]:
         """Check rate limit using Redis sliding window"""
         current_time = time.time()
         window_start = current_time - window
@@ -240,3 +245,148 @@ class RedisRateLimiter:
             'remaining': limit - current_count - 1,
             'reset': int(current_time + window)
         }
+
+
+class SecurityPolicy:
+    """Security policy configuration for rate limiting"""
+    
+    # Rate limiting policies per endpoint type
+    POLICIES = {
+        'authentication': {'requests_per_minute': 5, 'requests_per_hour': 20},
+        'api_standard': {'requests_per_minute': 60, 'requests_per_hour': 1000},
+        'api_intensive': {'requests_per_minute': 10, 'requests_per_hour': 100},
+        'file_upload': {'requests_per_minute': 5, 'requests_per_hour': 50},
+        'webhook': {'requests_per_minute': 100, 'requests_per_hour': 2000},
+        'monitoring': {'requests_per_minute': 300, 'requests_per_hour': 5000},
+        'public': {'requests_per_minute': 30, 'requests_per_hour': 300}
+    }
+    
+    # IP-based rate limits (stricter for unknown IPs)
+    IP_POLICIES = {
+        'default': {'requests_per_minute': 30, 'requests_per_hour': 300},
+        'trusted': {'requests_per_minute': 120, 'requests_per_hour': 2000},
+        'suspicious': {'requests_per_minute': 5, 'requests_per_hour': 20}
+    }
+    
+    @classmethod
+    def get_policy(cls, policy_type: str) -> Dict[str, int]:
+        """Get rate limiting policy for endpoint type"""
+        return cls.POLICIES.get(policy_type, cls.POLICIES['api_standard'])
+    
+    @classmethod
+    def get_ip_policy(cls, ip_type: str = 'default') -> Dict[str, int]:
+        """Get rate limiting policy for IP type"""
+        return cls.IP_POLICIES.get(ip_type, cls.IP_POLICIES['default'])
+
+
+def get_redis_client() -> Optional[redis.Redis]:
+    """Get Redis client for rate limiting"""
+    try:
+        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        client = redis.from_url(
+            redis_url,
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+            retry_on_timeout=True,
+            health_check_interval=30
+        )
+        # Test connection
+        client.ping()
+        return client
+    except Exception as e:
+        logger.warning(f"Redis connection failed, falling back to in-memory: {e}")
+        return None
+
+
+def create_rate_limiter() -> Union[RedisRateLimiter, RateLimiter]:
+    """Create appropriate rate limiter based on Redis availability"""
+    redis_client = get_redis_client()
+    if redis_client:
+        logger.info("Using Redis-based rate limiter")
+        return RedisRateLimiter(redis_client)
+    else:
+        logger.info("Using in-memory rate limiter")
+        return RateLimiter()
+
+
+def policy_rate_limit(policy_type: str = 'api_standard'):
+    """Rate limiter decorator using security policies"""
+    policy = SecurityPolicy.get_policy(policy_type)
+    return rate_limit(
+        requests_per_minute=policy['requests_per_minute'],
+        requests_per_hour=policy['requests_per_hour']
+    )
+
+
+def ip_rate_limit(ip_type: str = 'default'):
+    """IP-based rate limiter using security policies"""
+    policy = SecurityPolicy.get_ip_policy(ip_type)
+    
+    def ip_key_func():
+        return f"ip:{request.remote_addr}"
+    
+    return rate_limit(
+        requests_per_minute=policy['requests_per_minute'],
+        requests_per_hour=policy['requests_per_hour'],
+        key_func=ip_key_func
+    )
+
+
+def adaptive_rate_limit():
+    """Adaptive rate limiter that adjusts based on system load"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Get system load to adjust rate limits
+            try:
+                import psutil
+                cpu_percent = psutil.cpu_percent(interval=0.1)
+                memory_percent = psutil.virtual_memory().percent
+                
+                # Adjust rate limits based on system load
+                if cpu_percent > 80 or memory_percent > 80:
+                    # High load - strict limits
+                    policy = SecurityPolicy.get_policy('api_intensive')
+                elif cpu_percent > 60 or memory_percent > 60:
+                    # Medium load - standard limits
+                    policy = SecurityPolicy.get_policy('api_standard')
+                else:
+                    # Low load - relaxed limits
+                    policy = {
+                        'requests_per_minute': 120,
+                        'requests_per_hour': 2000
+                    }
+                
+                # Apply dynamic rate limiting
+                rate_limiter_func = rate_limit(
+                    requests_per_minute=policy['requests_per_minute'],
+                    requests_per_hour=policy['requests_per_hour']
+                )
+                
+                return rate_limiter_func(f)(*args, **kwargs)
+                
+            except Exception as e:
+                logger.warning(f"Adaptive rate limiting failed, using standard: {e}")
+                return standard_rate_limit(f)(*args, **kwargs)
+        
+        return decorated_function
+    return decorator
+
+
+# Initialize global rate limiter
+_global_rate_limiter = None
+
+
+def get_global_rate_limiter():
+    """Get or create global rate limiter instance"""
+    global _global_rate_limiter
+    if _global_rate_limiter is None:
+        _global_rate_limiter = create_rate_limiter()
+    return _global_rate_limiter
+
+
+def reset_rate_limiter():
+    """Reset global rate limiter (for testing)"""
+    global _global_rate_limiter
+    _global_rate_limiter = None

@@ -5,7 +5,7 @@ Provides caching layer for database queries and agent responses
 
 import json
 import pickle
-from typing import Any, Optional, Union, List, Dict
+from typing import Any, Optional, Union, List, Dict, Callable
 from datetime import timedelta
 from functools import wraps
 import hashlib
@@ -229,7 +229,7 @@ class RedisCacheManager:
 # Cache decorators for common use cases
 
 def cache_result(namespace: str, ttl: int = 3600, 
-                key_func: Optional[callable] = None):
+                key_func: Optional[Callable] = None):
     """
     Decorator to cache function results
     

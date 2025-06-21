@@ -6,35 +6,168 @@ services:
     dockerfilePath: ./deployment/Dockerfile
     dockerContext: .
     envVars:
+      # Flask & Application Configuration
       - key: FLASK_ENV
         value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: FLASK_HOST
+        value: "0.0.0.0"
+      - key: FLASK_PORT
+        value: "5006"
+      
+      # Database Configuration
       - key: DATABASE_URL
         fromDatabase:
           name: swarm-db
           property: connectionString
+      - key: DB_POOL_SIZE
+        value: "10"
+      - key: DB_POOL_MAX_OVERFLOW
+        value: "20"
+      - key: DB_POOL_TIMEOUT
+        value: "30"
+      - key: DB_POOL_RECYCLE
+        value: "3600"
+      
+      # Redis Configuration
       - key: REDIS_URL
         fromService:
           type: pserv
           name: swarm-redis
           property: connectionString
+      - key: REDIS_TIMEOUT
+        value: "5"
+      
+      # Security Configuration
       - key: SECRET_KEY
         generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: ENABLE_SECURITY_HEADERS
+        value: "true"
+      - key: ENABLE_HSTS
+        value: "true"
+      - key: HSTS_MAX_AGE
+        value: "31536000"
+      - key: HSTS_INCLUDE_SUBDOMAINS
+        value: "true"
+      - key: CSP_ENVIRONMENT
+        value: "production"
+      
+      # Rate Limiting Configuration
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: RATE_LIMIT_STORAGE
+        value: "redis"
+      - key: RATE_LIMIT_API_STANDARD_PER_MINUTE
+        value: "60"
+      - key: RATE_LIMIT_API_STANDARD_PER_HOUR
+        value: "1000"
+      - key: RATE_LIMIT_WEBHOOKS_PER_MINUTE
+        value: "100"
+      - key: RATE_LIMIT_WEBHOOKS_PER_HOUR
+        value: "2000"
+      - key: RATE_LIMIT_MONITORING_PER_MINUTE
+        value: "300"
+      - key: RATE_LIMIT_MONITORING_PER_HOUR
+        value: "5000"
+      
+      # API Keys (Set in dashboard)
       - key: OPENROUTER_API_KEY
-        sync: false  # Set in dashboard
+        sync: false
+      - key: SWARM_API_KEY
+        sync: false
+      - key: GITHUB_PAT
+        sync: false
+      
+      # Email Configuration (Set in dashboard)
       - key: MAILGUN_API_KEY
-        sync: false  # Set in dashboard
+        sync: false
       - key: MAILGUN_DOMAIN
-        sync: false  # Set in dashboard
+        sync: false
       - key: MAILGUN_SIGNING_KEY
-        sync: false  # Set in dashboard
+        sync: false
+      - key: MAILGUN_FROM_EMAIL
+        sync: false
+      
+      # Monitoring & Logging
       - key: SENTRY_DSN
-        value: ""  # Optional - set in dashboard if needed
-      - key: NODE_ENV
-        value: production
+        sync: false  # Optional - set in dashboard if needed
+      - key: SENTRY_ENVIRONMENT
+        value: "production"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: LOG_FORMAT
+        value: "json"
+      - key: ENABLE_STRUCTURED_LOGGING
+        value: "true"
+      
+      # Feature Flags
+      - key: ENABLE_AUTO_DISPATCH
+        value: "true"
+      - key: ENABLE_REALTIME_UPDATES
+        value: "true"
+      - key: ENABLE_AUDIT_LOGGING
+        value: "true"
+      - key: ENABLE_PERFORMANCE_MONITORING
+        value: "true"
+      - key: ENABLE_RATE_LIMITING
+        value: "true"
+      - key: ENABLE_CIRCUIT_BREAKERS
+        value: "true"
+      - key: ENABLE_METRICS_COLLECTION
+        value: "true"
+      
+      # MCP Configuration
       - key: DISABLE_MCP_FILESYSTEM
-        value: "false"  # Enable MCP filesystem server for full functionality
+        value: "false"
+      - key: MCP_TIMEOUT
+        value: "30"
+      - key: MCP_MAX_RETRIES
+        value: "3"
+      
+      # Performance Settings
+      - key: REQUEST_TIMEOUT
+        value: "30"
+      - key: WEBHOOK_PROCESSING_TIMEOUT
+        value: "30"
+      - key: TASK_DISPATCH_TIMEOUT
+        value: "60"
+      - key: MAX_CONTENT_LENGTH
+        value: "52428800"  # 50MB
+      
+      # Celery Configuration
+      - key: CELERY_WORKER_CONCURRENCY
+        value: "4"
+      - key: CELERY_WORKER_TIMEOUT
+        value: "300"
+      - key: CELERY_TASK_TIMEOUT
+        value: "120"
+      
+      # Production Security
+      - key: FORCE_HTTPS
+        value: "true"
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_HTTPONLY
+        value: "true"
+      
+      # Health Check Configuration
+      - key: ENABLE_HEALTH_CHECKS
+        value: "true"
+      - key: HEALTH_CHECK_TIMEOUT
+        value: "5"
+      - key: HEALTH_CHECK_RETRIES
+        value: "3"
+    
     autoDeploy: false
-    healthCheckPath: /api/monitoring/ready
+    healthCheckPath: /api/monitoring/simple-health
+    startCommand: python app.py
 
   # Background Worker
   - type: worker
