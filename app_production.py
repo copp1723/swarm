@@ -1,3 +1,4 @@
+import app.patch_gevent  # noqa: E402  (must precede all other imports)
 #!/usr/bin/env python3
 """
 Production-ready Flask application with PostgreSQL, Redis, and Email Integration
