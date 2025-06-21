@@ -9,6 +9,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "css:dev": "tailwindcss -c tailwind.config.js -i ./static/src/styles.css -o ./static/css/styles.css --watch",
+    "css:build": "tailwindcss -c tailwind.config.js -i ./static/src/styles.css -o ./static/css/styles.css --minify",
     "qa:cross-browser": "node scripts/run-cross-browser-qa.js",
     "qa:chrome": "cypress run --browser chrome --spec cypress/e2e/cross-browser-viewport-qa.cy.js",
     "qa:firefox": "cypress run --browser firefox --spec cypress/e2e/cross-browser-viewport-qa.cy.js",
@@ -30,6 +32,9 @@
   },
   "homepage": "https://github.com/copp1723/swarm#readme",
   "devDependencies": {
-    "cypress": "^14.5.0"
+    "cypress": "^14.5.0",
+    "tailwindcss": "^3.4.4",
+    "postcss": "^8.4.33",
+    "autoprefixer": "^10.4.17"
   }
 }
