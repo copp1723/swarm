@@ -64,7 +64,7 @@ class TaskStatus:
             "agent_messages": [msg.to_dict() for msg in self.agent_messages]
         }
     
-    def update_progress(self, progress: int, phase: str = None) -> None:
+    def update_progress(self, progress: int, phase: Optional[str] = None) -> None:
         """Update task progress and optionally the phase"""
         self.progress = min(100, max(0, progress))
         if phase:
@@ -74,7 +74,7 @@ class TaskStatus:
         """Add an agent-to-agent message"""
         self.agent_messages.append(message)
     
-    def complete(self, results: Dict[str, Any] = None) -> None:
+    def complete(self, results: Optional[Dict[str, Any]] = None) -> None:
         """Mark task as completed"""
         self.status = "completed"
         self.progress = 100

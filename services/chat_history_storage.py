@@ -57,13 +57,13 @@ class ChatHistoryStorage:
                             message_id TEXT NOT NULL,
                             role TEXT NOT NULL,
                             content TEXT NOT NULL,
-                            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             metadata TEXT,
                             UNIQUE(agent_id, message_id)
                         )
                     """))
                     conn.execute(text(
-                        "CREATE INDEX idx_agent_chat_history ON agent_chat_history(agent_id, timestamp)"
+                        "CREATE INDEX idx_agent_chat_history ON agent_chat_history(agent_id, created_at)"
                     ))
                     conn.commit()
                     logger.info("Created agent_chat_history table")
@@ -134,10 +134,10 @@ class ChatHistoryStorage:
         try:
             with db.engine.connect() as conn:
                 result = conn.execute(text("""
-                    SELECT message_id, role, content, timestamp, metadata
+                    SELECT message_id, role, content, created_at, metadata
                     FROM agent_chat_history
                     WHERE agent_id = :agent_id
-                    ORDER BY timestamp DESC
+                    ORDER BY created_at DESC
                     LIMIT :limit
                 """), {"agent_id": agent_id, "limit": limit})
                 
@@ -207,7 +207,7 @@ class ChatHistoryStorage:
             with db.engine.connect() as conn:
                 result = conn.execute(text("""
                     DELETE FROM agent_chat_history
-                    WHERE timestamp < datetime('now', '-' || :days || ' days')
+                    WHERE created_at < datetime('now', '-' || :days || ' days')
                 """), {"days": days})
                 conn.commit()
                 logger.info(f"Cleaned up {result.rowcount} old messages")
