@@ -8,6 +8,15 @@
     "checkJs": true,
     "declaration": false,
     "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["js/*"],
+      "@components/*": ["js/components/*"],
+      "@services/*": ["js/services/*"],
+      "@utils/*": ["js/utils/*"],
+      "@agents/*": ["js/agents/*"],
+      "~/*": ["js/*"]
+    },
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,

@@ -1,0 +1,198 @@
+/**
+ * SWARM Platform Main Stylesheet
+ * This is the entry point for all styles in the SWARM platform.
+ */
+
+/* Tailwind CSS Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Styles */
+@layer base {
+  html {
+    @apply text-gray-900 antialiased;
+  }
+  
+  body {
+    @apply bg-gray-50 font-sans;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium leading-tight;
+  }
+  
+  h1 {
+    @apply text-3xl mb-6;
+  }
+  
+  h2 {
+    @apply text-2xl mb-4;
+  }
+  
+  h3 {
+    @apply text-xl mb-3;
+  }
+  
+  a {
+    @apply text-primary-600 hover:text-primary-800 transition-colors;
+  }
+  
+  pre, code {
+    @apply font-mono;
+  }
+}
+
+/* Component Styles */
+@layer components {
+  /* Button Styles */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+  }
+  
+  .btn-outline {
+    @apply btn border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-primary-500;
+  }
+  
+  /* Card Styles */
+  .card {
+    @apply bg-white rounded-lg shadow-md overflow-hidden;
+  }
+  
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-200;
+  }
+  
+  .card-body {
+    @apply p-6;
+  }
+  
+  .card-footer {
+    @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+  }
+  
+  /* Form Styles */
+  .form-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+  
+  .form-error {
+    @apply text-red-600 text-sm mt-1;
+  }
+  
+  /* Agent Chat Styles */
+  .chat-container {
+    @apply flex flex-col h-full;
+  }
+  
+  .chat-message {
+    @apply p-4 mb-4 rounded-lg max-w-3xl;
+  }
+  
+  .chat-message-user {
+    @apply chat-message bg-primary-100 ml-auto;
+  }
+  
+  .chat-message-agent {
+    @apply chat-message bg-gray-100;
+  }
+  
+  .chat-message-system {
+    @apply chat-message bg-secondary-100 mx-auto text-center;
+  }
+  
+  /* Terminal-like Display */
+  .terminal {
+    @apply font-mono text-sm p-4 rounded-lg bg-terminal-bg text-terminal-text overflow-x-auto;
+  }
+  
+  .terminal-command {
+    @apply text-green-400;
+  }
+  
+  .terminal-output {
+    @apply text-terminal-text;
+  }
+  
+  .terminal-error {
+    @apply text-red-400;
+  }
+  
+  /* Status Indicators */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .status-pending {
+    @apply status-badge bg-yellow-100 text-yellow-800;
+  }
+  
+  .status-running {
+    @apply status-badge bg-blue-100 text-blue-800;
+  }
+  
+  .status-completed {
+    @apply status-badge bg-green-100 text-green-800;
+  }
+  
+  .status-failed {
+    @apply status-badge bg-red-100 text-red-800;
+  }
+}
+
+/* Custom Animations */
+@layer utilities {
+  .animate-pulse-gentle {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in;
+  }
+  
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  
+  .animate-typing {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 2px solid;
+    width: 0;
+    animation: typing 1.5s steps(20, end) forwards, blink 1s infinite;
+  }
+  
+  @keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+  }
+  
+  @keyframes blink {
+    0%, 100% { border-color: transparent }
+    50% { border-color: currentColor }
+  }
+}
+
+/* Responsive Utilities */
+@media (max-width: 640px) {
+  .chat-message {
+    @apply max-w-full;
+  }
+}

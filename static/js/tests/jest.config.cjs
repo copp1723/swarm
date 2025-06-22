@@ -1,11 +1,6 @@
 module.exports = {
     testEnvironment: 'jsdom',
-    setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-    testMatch: ['<rootDir>/tests/**/*.test.js'],
-    moduleNameMapping: {
-        '^../(.*)$': '<rootDir>/$1',
-        '^./(.*)$': '<rootDir>/$1'
-    },
+    testMatch: ['<rootDir>/**/*.test.js'],
     transform: {
         '^.+\\.js$': 'babel-jest'
     },

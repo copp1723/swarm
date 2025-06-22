@@ -1,6 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import json
+from typing import TYPE_CHECKING
+
+# Type checking import to resolve mypy issues
+if TYPE_CHECKING:
+    from flask_sqlalchemy.model import Model
 
 db = SQLAlchemy()
 

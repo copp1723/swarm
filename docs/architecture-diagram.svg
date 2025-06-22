@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+    </pattern>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7ED321;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#68B320;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#F5A623;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D2941A;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9013FE;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7910D9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="600" fill="url(#grid)"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#333">
+    SWARM Multi-Agent Architecture
+  </text>
+  <text x="400" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    Infrastructure & UI Hardening - Post Enhancement
+  </text>
+  
+  <!-- Client Layer -->
+  <rect x="50" y="80" width="700" height="80" fill="url(#blueGrad)" stroke="#357ABD" stroke-width="2" rx="5"/>
+  <text x="400" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    Client Layer
+  </text>
+  
+  <!-- Client components -->
+  <rect x="80" y="115" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#357ABD" rx="3"/>
+  <text x="140" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Web UI (React)</text>
+  
+  <rect x="220" y="115" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#357ABD" rx="3"/>
+  <text x="280" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">REST API</text>
+  
+  <rect x="360" y="115" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#357ABD" rx="3"/>
+  <text x="420" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">WebSocket</text>
+  
+  <rect x="500" y="115" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#357ABD" rx="3"/>
+  <text x="560" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Security Layer</text>
+  
+  <!-- Application Layer -->
+  <rect x="50" y="180" width="700" height="80" fill="url(#greenGrad)" stroke="#68B320" stroke-width="2" rx="5"/>
+  <text x="400" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    Application Layer
+  </text>
+  
+  <!-- Application components -->
+  <rect x="80" y="215" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#68B320" rx="3"/>
+  <text x="140" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Flask App</text>
+  
+  <rect x="220" y="215" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#68B320" rx="3"/>
+  <text x="280" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Blueprint Registry</text>
+  
+  <rect x="360" y="215" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#68B320" rx="3"/>
+  <text x="420" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Middleware</text>
+  
+  <rect x="500" y="215" width="120" height="35" fill="rgba(255,255,255,0.8)" stroke="#68B320" rx="3"/>
+  <text x="560" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Async Bridge</text>
+  
+  <!-- Service Layer -->
+  <rect x="50" y="280" width="700" height="120" fill="url(#orangeGrad)" stroke="#D2941A" stroke-width="2" rx="5"/>
+  <text x="400" y="305" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    Service Layer
+  </text>
+  
+  <!-- Service components row 1 -->
+  <rect x="80" y="315" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="130" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">NLU Service</text>
+  
+  <rect x="200" y="315" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="250" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Orchestrator</text>
+  
+  <rect x="320" y="315" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="370" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Multi-Agent Executor</text>
+  
+  <rect x="440" y="315" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="490" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">MCP Manager</text>
+  
+  <rect x="560" y="315" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="610" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Email Agent</text>
+  
+  <!-- Service components row 2 -->
+  <rect x="80" y="355" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="130" y="373" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Audit System</text>
+  
+  <rect x="200" y="355" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="250" y="373" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Plugin System</text>
+  
+  <rect x="320" y="355" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="370" y="373" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Service Registry</text>
+  
+  <rect x="440" y="355" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="490" y="373" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Circuit Breakers</text>
+  
+  <rect x="560" y="355" width="100" height="30" fill="rgba(255,255,255,0.8)" stroke="#D2941A" rx="3"/>
+  <text x="610" y="373" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">DI Container</text>
+  
+  <!-- Infrastructure Layer -->
+  <rect x="50" y="420" width="700" height="100" fill="url(#purpleGrad)" stroke="#7910D9" stroke-width="2" rx="5"/>
+  <text x="400" y="445" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    Infrastructure Layer
+  </text>
+  
+  <!-- Infrastructure components -->
+  <rect x="80" y="455" width="120" height="30" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="140" y="473" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Database (SQLAlchemy)</text>
+  
+  <rect x="220" y="455" width="120" height="30" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="280" y="473" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Redis Cache</text>
+  
+  <rect x="360" y="455" width="120" height="30" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="420" y="473" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Celery Workers</text>
+  
+  <rect x="500" y="455" width="120" height="30" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="560" y="473" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Message Queues</text>
+  
+  <!-- Second row infrastructure -->
+  <rect x="150" y="490" width="120" height="20" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="210" y="502" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">Connection Pools</text>
+  
+  <rect x="290" y="490" width="120" height="20" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="350" y="502" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">Event Bus</text>
+  
+  <rect x="430" y="490" width="120" height="20" fill="rgba(255,255,255,0.8)" stroke="#7910D9" rx="3"/>
+  <text x="490" y="502" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">Monitoring</text>
+  
+  <!-- Arrows showing data flow -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+     refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- Vertical arrows between layers -->
+  <line x1="400" y1="160" x2="400" y2="180" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="400" y1="260" x2="400" y2="280" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="400" y1="400" x2="400" y2="420" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Enhancement indicators -->
+  <circle cx="720" cy="120" r="8" fill="#FF6B6B"/>
+  <text x="720" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">H</text>
+  
+  <circle cx="720" cy="220" r="8" fill="#FF6B6B"/>
+  <text x="720" y="225" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">H</text>
+  
+  <circle cx="720" cy="340" r="8" fill="#FF6B6B"/>
+  <text x="720" y="345" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">H</text>
+  
+  <circle cx="720" cy="470" r="8" fill="#FF6B6B"/>
+  <text x="720" y="475" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">H</text>
+  
+  <!-- Legend -->
+  <rect x="550" y="540" width="200" height="50" fill="rgba(255,255,255,0.9)" stroke="#333" stroke-width="1" rx="3"/>
+  <text x="650" y="555" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#333">
+    Hardening Enhancements
+  </text>
+  <circle cx="570" cy="570" r="6" fill="#FF6B6B"/>
+  <text x="570" y="575" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white">H</text>
+  <text x="585" y="575" font-family="Arial, sans-serif" font-size="9" fill="#333">
+    Security, Performance & Reliability
+  </text>
+  
+  <!-- Version info -->
+  <text x="50" y="580" font-family="Arial, sans-serif" font-size="10" fill="#666">
+    Version: Infrastructure & UI Hardening
+  </text>
+  <text x="50" y="595" font-family="Arial, sans-serif" font-size="10" fill="#666">
+    Date: 2025-01-27
+  </text>
+</svg>
